@@ -6687,6 +6687,11 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
         while it waited on the Tk thread. The window closed meanwhile only hides until it is done (close).
         `seamless`: "Bloodborne Seamless co-op", its own entry (Play Bloodborne.exe --seamless) beside the normal
         game's (bbport_steam.seamless_options)."""
+        if not WINDOWS:
+            self.messagebox.showinfo('Bloodborne', _(
+                'In Steam, add the Linux launcher as a non-Steam game and set launch options to --play.',
+                'В Steam добавьте Linux-лаунчер как стороннюю игру и укажите параметр запуска --play.'))
+            return
         if getattr(self, 'steam_adding', False):  # a second click while the first one waits for Steam
             self.messagebox.showinfo('Bloodborne', _('Bloodborne is still being added to Steam: Steam closes for it '
                                                      'first, which can take up to half a minute.'))
@@ -6776,11 +6781,6 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
             self.collect()
         except Exception:  # never keep the window open over a settings problem
             pass
-        if not WINDOWS:
-            self.messagebox.showinfo('Bloodborne', _(
-                'In Steam, add the Linux launcher as a non-Steam game and set launch options to --play.',
-                'В Steam добавьте Linux-лаунчер как стороннюю игру и укажите параметр запуска --play.'))
-            return
         if getattr(self, 'steam_adding', False):
             # Add to Steam waits for Steam to close or writes shortcuts.vdf: ended now, Steam stayed closed and a
             # cut-off shortcuts.vdf lost every non-Steam game in it. Hidden, the launcher closes once it is done.

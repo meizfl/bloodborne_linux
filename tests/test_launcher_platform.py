@@ -16,6 +16,41 @@ import bbport_launcher_win as launcher
 
 
 class PlatformTests(unittest.TestCase):
+    def closeable_launcher(self, process=None):
+        window = object.__new__(launcher.Launcher)
+        window.root = mock.Mock()
+        window.app = {}
+        window.process = process
+        window.messagebox = mock.Mock()
+        window.test_running = lambda: False
+        window.window_place = lambda: ''
+        window.collect = mock.Mock()
+        window.drop_tray = mock.Mock()
+        return window
+
+    def test_linux_close_destroys_idle_window_without_steam_dialog(self):
+        window = self.closeable_launcher()
+        with mock.patch.object(launcher, 'WINDOWS', False):
+            window.close()
+        window.root.destroy.assert_called_once()
+        window.messagebox.showinfo.assert_not_called()
+
+    def test_linux_close_keeps_running_game_and_hides_its_launcher(self):
+        window = self.closeable_launcher(process=mock.Mock())
+        with mock.patch.object(launcher, 'WINDOWS', False):
+            window.close()
+        window.root.withdraw.assert_called_once()
+        window.root.destroy.assert_not_called()
+        window.messagebox.showinfo.assert_not_called()
+        self.assertTrue(window.hidden)
+
+    def test_linux_steam_notice_belongs_only_to_the_steam_action(self):
+        window = self.closeable_launcher()
+        with mock.patch.object(launcher, 'WINDOWS', False):
+            window.add_to_steam()
+        window.messagebox.showinfo.assert_called_once()
+        window.root.destroy.assert_not_called()
+
     def test_portable_mode_is_opt_in_and_uses_the_executable_directory(self):
         with tempfile.TemporaryDirectory(prefix='portable launcher ') as folder, \
                 mock.patch.object(host, 'family', return_value='linux'):

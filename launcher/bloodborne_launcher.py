@@ -53,6 +53,17 @@ def smoke_test(app):
         app.Launcher.maybe_open_setup = lambda self: None
         app.Launcher.maybe_show_news = lambda self: None
         messagebox.showerror = lambda *args, **kwargs: errors.append(str(args))
+        messagebox.showinfo = lambda *args, **kwargs: errors.append(str(args))
+        messagebox.showwarning = lambda *args, **kwargs: errors.append(str(args))
+
+        def close_window(window):
+            destroyed = []
+            window.root.bind('<Destroy>', lambda event: destroyed.append(True)
+                             if event.widget is window.root else None, add='+')
+            window.root.tk.call(window.root.protocol('WM_DELETE_WINDOW'))
+            if not destroyed:
+                window.root.destroy()
+                raise AssertionError('WM_DELETE_WINDOW did not close the idle launcher')
         window = app.Launcher(root, tk, ttk, filedialog, messagebox)
         try:
             for name, _title in app.NAV_SIMPLE + app.NAV_EXPERT:
@@ -66,7 +77,7 @@ def smoke_test(app):
                 frame.uninstall()
             for job in root.tk.splitlist(root.tk.call('after', 'info')):
                 root.after_cancel(job)
-            root.destroy()
+            close_window(window)
         if errors:
             raise RuntimeError('\n'.join(errors))
         print('PASS: all launcher pages')
@@ -97,11 +108,11 @@ def smoke_test(app):
                     window.custom_frame.uninstall()
                 for job in window.root.tk.splitlist(window.root.tk.call('after', 'info')):
                     window.root.after_cancel(job)
-                window.root.destroy()
+                close_window(window)
             app.Launcher, app.one_launcher, app.bring_to_front_on_request, sys.argv = saved
         if errors:
             raise RuntimeError('\n'.join(errors))
-        print('PASS: normal launcher entry point')
+        print('PASS: normal launcher entry point and WM_DELETE_WINDOW')
     return 0
 
 
