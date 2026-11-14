@@ -580,7 +580,7 @@ class SetupGuideTests(unittest.TestCase):
         import tkinter
         from tkinter import ttk
         root = hidden_root(self)
-        for patcher in (mock.patch.object(L, 'LANG', 'en'), mock.patch('webbrowser.open')):
+        for patcher in (mock.patch.object(L, 'LANG', 'en'), mock.patch('bbport_browser.open')):
             patcher.start()
             self.addCleanup(patcher.stop)
         variables = {}
@@ -621,7 +621,7 @@ class OnlinePageTests(unittest.TestCase):
         import tkinter
         from tkinter import ttk
         root = hidden_root(self)
-        for patcher in (mock.patch.object(L, 'LANG', 'en'), mock.patch('webbrowser.open')):
+        for patcher in (mock.patch.object(L, 'LANG', 'en'), mock.patch('bbport_browser.open')):
             patcher.start()
             self.addCleanup(patcher.stop)
         app = self.app = bare_launcher(root=root, tk=tkinter, ttk=ttk, dpi=1, app=dict(L.APP_DEFAULTS), vars={},

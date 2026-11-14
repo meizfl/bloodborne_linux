@@ -29,7 +29,7 @@ def configure_portable(executable=None, frozen=None, env=None):
     if not (root / 'portable-mode').is_file():
         return False
     env = os.environ if env is None else env
-    env.update(BB_PORT_DIR=str(root), BB_DATA_DIR=str(root), XDG_CONFIG_HOME=str(root / 'config'))
+    env.update(BB_PORT_DIR=str(root), BB_DATA_DIR=str(root), BB_LAUNCHER_CONFIG_HOME=str(root / 'config'))
     return True
 
 
@@ -37,7 +37,7 @@ def config_dir(env=None, home=None, host=None):
     env, home, host = os.environ if env is None else env, Path.home() if home is None else Path(home), host or family()
     if host == 'windows':
         return Path(env.get('APPDATA') or home) / 'bbport-launcher'
-    return Path(env.get('XDG_CONFIG_HOME') or home / '.config') / 'bbport-launcher-tk'
+    return Path(env.get('BB_LAUNCHER_CONFIG_HOME') or env.get('XDG_CONFIG_HOME') or home / '.config') / 'bbport-launcher-tk'
 
 
 def data_dir(env=None, home=None, host=None):
@@ -61,7 +61,25 @@ def open_path(path, reveal=False):
             return subprocess.Popen(['explorer', '/select,', path])
         return os.startfile(path)
     return subprocess.Popen(['xdg-open', str(Path(path).parent) if reveal else path],
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=desktop_environment())
+
+
+def desktop_environment():
+    """External desktop apps must not inherit PyInstaller's private libraries."""
+    env = os.environ.copy()
+    if getattr(sys, 'frozen', False):
+        original = env.get('LD_LIBRARY_PATH_ORIG')
+        if original is None:
+            env.pop('LD_LIBRARY_PATH', None)
+        else:
+            env['LD_LIBRARY_PATH'] = original
+    return env
+
+
+def open_url(url):
+    subprocess.Popen(['xdg-open', url], env=desktop_environment(),
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return True
 
 
 def cpu_name():

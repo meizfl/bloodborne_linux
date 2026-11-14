@@ -5,7 +5,7 @@ before), and a new account (folded until asked for). Both places offered Discord
 player with an account of their own had to find the Online page. One account for SuperMedo Server and Seamless
 co-op."""
 import threading
-import webbrowser
+import bbport_browser as webbrowser
 
 import bbport_theme as theme
 

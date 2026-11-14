@@ -13,7 +13,7 @@ import hashlib
 import os
 import re
 import threading
-import webbrowser
+import bbport_browser as webbrowser
 from pathlib import Path
 
 import bbport_theme as theme

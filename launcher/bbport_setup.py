@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 import re
 import time
-import webbrowser
+import bbport_browser as webbrowser
 
 from PIL import ImageTk
 

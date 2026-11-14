@@ -29,7 +29,7 @@ import tempfile
 import threading
 import time
 import urllib.request
-import webbrowser
+import bbport_browser as webbrowser
 import zipfile
 import bbport_platform as host
 

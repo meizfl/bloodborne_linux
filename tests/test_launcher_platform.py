@@ -60,7 +60,8 @@ class PlatformTests(unittest.TestCase):
             (root / 'portable-mode').touch()
             self.assertTrue(host.configure_portable(root / 'BloodborneLauncher', True, env))
             self.assertEqual(env['BB_DATA_DIR'], str(root))
-            self.assertEqual(env['XDG_CONFIG_HOME'], str(root / 'config'))
+            self.assertEqual(env['XDG_CONFIG_HOME'], '/global')
+            self.assertEqual(host.config_dir(env=env), root / 'config' / 'bbport-launcher-tk')
 
     def test_frozen_linux_normal_start_does_not_call_windows_updater(self):
         calls = mock.Mock()
@@ -171,3 +172,19 @@ class PosixProcessTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class DesktopBrowserTests(unittest.TestCase):
+    def test_linux_url_uses_desktop_opener(self):
+        import bbport_browser
+        with mock.patch.object(bbport_browser.sys, 'platform', 'linux'), \
+                mock.patch.object(host.subprocess, 'Popen') as spawn, \
+                mock.patch.dict(host.os.environ, {'XDG_CONFIG_HOME': '/system/profile',
+                                                 'LD_LIBRARY_PATH': '/bundle',
+                                                 'LD_LIBRARY_PATH_ORIG': '/system/libs'}), \
+                mock.patch.object(host.sys, 'frozen', True, create=True):
+            self.assertTrue(bbport_browser.open('https://bbport.de/'))
+        self.assertEqual(spawn.call_args.args[0], ['xdg-open', 'https://bbport.de/'])
+        env = spawn.call_args.kwargs['env']
+        self.assertEqual(env['XDG_CONFIG_HOME'], '/system/profile')
+        self.assertEqual(env['LD_LIBRARY_PATH'], '/system/libs')

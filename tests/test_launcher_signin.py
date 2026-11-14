@@ -83,7 +83,7 @@ class SignInBoxTests(unittest.TestCase):
 
     def test_discord_after_the_box_is_gone_still_keeps_the_account(self):
         with mock.patch.object(L, 'discord_sign_in', return_value=('Hunter', 'secret')), \
-                mock.patch('webbrowser.open'):
+                mock.patch('bbport_browser.open'):
             button(self.box, 'Sign in with Discord').invoke()
             self.parent.destroy()
             run_ui_calls(self.app)
@@ -137,7 +137,7 @@ class SeamlessPartyTests(unittest.TestCase):
         root = hidden_root(self)
         for patcher in (mock.patch.object(L, 'LANG', 'en'),
                         mock.patch.object(L, 'BBSC_LAUNCH', mock.Mock(exists=lambda: True)),
-                        mock.patch('webbrowser.open')):
+                        mock.patch('bbport_browser.open')):
             patcher.start()
             self.addCleanup(patcher.stop)
         app = self.app = bare_launcher(root=root, tk=tkinter, ttk=ttk, dpi=1, app=dict(L.APP_DEFAULTS), vars={},
