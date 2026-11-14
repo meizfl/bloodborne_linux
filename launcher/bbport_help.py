@@ -980,10 +980,13 @@ class HelpMixin:
         for child in self.help_list.winfo_children():
             child.destroy()
         for state, topic, text in checks:
-            line = self.state_line(self.help_list, state, text, theme.CARD, wrap=640)
+            line = self.tk.Frame(self.help_list, bg=theme.CARD)
             line.pack(fill='x', pady=self.px(3))
             if topic:
                 self.link_to_topic(line, topic).pack(side='right', anchor='n')
+            # Pack the action first so long translated status text wraps into the
+            # remaining space instead of squeezing the link out of the row.
+            self.state_line(line, state, text, theme.CARD, wrap=640).pack(side='left', fill='x', expand=True)
         self.refresh_status()
 
     def runtime_problem(self):
