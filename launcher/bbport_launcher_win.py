@@ -3009,9 +3009,12 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
         self.check(f, 'sharpen', 'ini', _('Sharpening (RCAS)', 'Резкость (RCAS)'),
                    _('Off with FSR 4: it sharpens by itself, and sharpening on top of it brings flaws along edges.'))
         holder = ttk.Frame(f)
-        ttk.Scale(holder, from_=0.0, to=2.0, variable=self.var('sharpness', 'ini'), length=300).pack(side='left')
         value = ttk.Label(holder, width=5)
-        value.pack(side='left', padx=10)
+        # Reserve the readout before allocating the flexible slider; otherwise a
+        # narrow page or a wider font clips the value at the right edge.
+        value.pack(side='right', padx=10)
+        ttk.Scale(holder, from_=0.0, to=2.0, variable=self.var('sharpness', 'ini'), length=300).pack(
+            side='left', fill='x', expand=True)
         show = lambda *_a: value.configure(text=f'{self.vars["sharpness"].get():.2f}')
         self.vars['sharpness'].trace_add('write', show)
         show()

@@ -56,6 +56,11 @@ def smoke_test(app):
             root.update_idletasks()
         finally:
             window.pad_stop()
+            frame = getattr(window, 'custom_frame', None)
+            if frame:
+                frame.uninstall()
+            for job in root.tk.splitlist(root.tk.call('after', 'info')):
+                root.after_cancel(job)
             root.destroy()
         if errors:
             raise RuntimeError('\n'.join(errors))

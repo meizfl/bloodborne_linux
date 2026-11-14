@@ -3,6 +3,7 @@ see-through look, the side bar's switch drawn on the side bar's colour, and ever
 at the smallest windows."""
 from paths import ROOT
 import sys
+import time
 import unittest
 
 sys.path.insert(0, str(ROOT / 'launcher'))
@@ -99,15 +100,21 @@ class LiveLauncher:
         for name in patches:
             setattr(L.Launcher, name, lambda self, *_a, **_k: None)
 
+        app = None
         def restore():
             for job in root.tk.splitlist(root.tk.call('after', 'info')):  # the launcher's timers die with it
                 root.after_cancel(job)
-            root.destroy()
-            for name, function in patches.items():
-                setattr(L.Launcher, name, function)
-            for name, value in saved.items():
-                setattr(L, name, value)
-            temp.cleanup()
+            try:
+                frame = getattr(app, 'custom_frame', None)
+                if frame:
+                    frame.uninstall()
+                root.destroy()
+            finally:
+                for name, function in patches.items():
+                    setattr(L.Launcher, name, function)
+                for name, value in saved.items():
+                    setattr(L, name, value)
+                temp.cleanup()
         self.addCleanup(restore)
         app = L.Launcher(root, tk, ttk, filedialog, messagebox)
         root.deiconify()
@@ -117,6 +124,9 @@ class LiveLauncher:
     def settle(root, rounds=40):
         for _i in range(rounds):
             root.update()
+            # Let asynchronous native resize messages and the 50 ms chrome
+            # callback finish, rather than depending on the runner's CPU speed.
+            time.sleep(0.003)
 
     def resize(self, root, app, width, height):
         """The window at that size in points; False when the screen cannot hold it."""
@@ -204,7 +214,8 @@ class SideBarLiveTests(LiveLauncher, unittest.TestCase):
         """offer_update puts its box above the switch, which every player sees once a release is out: on the
         smallest window the list scrolls then, and the wheel over it moves the list, not the page."""
         root, app = self.launcher()
-        self.resize(root, app, 1000, 680)
+        if not self.resize(root, app, 1000, 680):
+            self.skipTest('the display cannot fit the target window at this DPI')
         app.show('advanced')  # a long page, so that a wheel that went to it would scroll it
         app.offer_update('9.9.9', '', 'https://bbport.de/')
         self.settle(root)
@@ -218,7 +229,9 @@ class SideBarLiveTests(LiveLauncher, unittest.TestCase):
         self.assertTrue(box.winfo_ismapped())
         self.assertGreaterEqual(box.winfo_rooty(), listed.winfo_rooty() + listed.winfo_height())
         self.assertLessEqual(box.winfo_rooty() + box.winfo_height(), app.mode_switch.winfo_rooty())
-        self.assertTrue(app.nav_scrolls)
+        self.assertTrue(app.nav_scrolls,
+                        f'window={root.winfo_width()}x{root.winfo_height()}, dpi={app.dpi}, '
+                        f'list={app.nav_list.winfo_height()}')
         self.assertTrue(hidden)
         self.assertNotIn('advanced', hidden)  # the page shown
         for name in hidden:
@@ -254,7 +267,8 @@ class PageTextLiveTests(LiveLauncher, unittest.TestCase):
     def test_no_text_is_cut_off(self):
         for lang in ('en', 'de', 'ru'):
             root, app = self.launcher(lang=lang)
-            self.resize(root, app, 1000, 680)
+            if not self.resize(root, app, 1000, 680):
+                self.skipTest('the display cannot fit the target window at this DPI')
             for name, _title in L.NAV_SIMPLE + L.NAV_EXPERT:
                 app.show(name)
                 self.settle(root)
