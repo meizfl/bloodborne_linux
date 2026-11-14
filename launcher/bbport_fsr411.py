@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 """Selected-adapter support and installed files are separate FSR 4.1.1 checks."""
 import json
+import bbport_platform as host
 import os
 from pathlib import Path
 import subprocess
@@ -20,8 +21,7 @@ def valid_status(status):
 
 
 def executable(port):
-    packaged = Path(port) / 'bin/bb-gpu-capabilities.exe'
-    return packaged if packaged.is_file() else Path(port) / 'out/bb-gpu-capabilities.exe'
+    return host.runtime_file(port, 'bb-gpu-capabilities.exe')
 
 
 def vulkan_folder(port, data_dir, env):

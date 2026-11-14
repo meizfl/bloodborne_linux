@@ -25,6 +25,8 @@ def main():
         # Tcl initialization also checks that the frozen bundle carries Tcl's library.
         tkinter.Tcl().eval('info patchlevel')
         assert bbport_theme.ASSETS.is_dir(), 'launcher assets missing'
+        import patches
+        assert patches.BUILTIN_XML.is_file(), 'embedded patch XML missing'
         print(json.dumps({'platform': app.host.family(), 'tk': tkinter.TkVersion,
                           'assets': str(bbport_theme.ASSETS), 'ssl': ssl.OPENSSL_VERSION}))
         return 0

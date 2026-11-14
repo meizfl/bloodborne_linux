@@ -3,7 +3,7 @@
 set -euo pipefail
 mkdir -p /build
 cd /src
-tar --exclude=./out --exclude=./dist --exclude=./.git --exclude='*/__pycache__' -cf - . | tar -xf - -C /build
+tar --exclude=./out --exclude=./dist --exclude=.git --exclude='*/__pycache__' -cf - . | tar -xf - -C /build
 cd /build
 # Source archive builds also work without git metadata. Applied vendor patches are idempotent.
 for change in gpu/patches/fsr-vulkan/*.patch; do
@@ -13,8 +13,12 @@ for change in gpu/patches/fsr-vulkan/*.patch; do
 done
 # build.sh's patch loop uses git apply; a tiny local repository records this source snapshot.
 git init -q
+if [[ -f gpu/third_party/fsr-vulkan/.git ]]; then rm gpu/third_party/fsr-vulkan/.git; fi
 git -C gpu/third_party/fsr-vulkan init -q
 export CC=gcc CXX=g++ BB_LTO=OFF CMAKE_BUILD_PARALLEL_LEVEL=${JOBS:-4}
+cmake -S gpu -B out/gpu -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBB_LTO=OFF \
+    -DBoost_DIR=/opt/bb-deps/lib/cmake/Boost-1.87.0 \
+    -DVulkan_INCLUDE_DIR=/opt/bb-deps/include -DVulkan_LIBRARY=/opt/bb-deps/lib/libvulkan.so
 bash build.sh
 python /src/packaging/linux/package_runtime.py /build/out /output/game_runtime
 xvfb-run -a python packaging/build_launcher.py --dist-dir /output/launcher --check --ui-check

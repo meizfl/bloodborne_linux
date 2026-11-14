@@ -48,6 +48,16 @@ def prepare(port, args=()):
     run.PORT = resource_root()
     env = os.environ
     port = Path(port).resolve()
+    args = list(args)
+    if args[:1] == ['--software']:
+        args.pop(0)
+        if not env.get('VK_DRIVER_FILES'):
+            candidates = list(Path('/usr/share/vulkan/icd.d').glob('lvp_icd*.json'))
+            candidates += list(Path('/run/opengl-driver/share/vulkan/icd.d').glob('lvp_icd*.json'))
+            if not candidates:
+                raise FileNotFoundError('Lavapipe not found; set VK_DRIVER_FILES.')
+            env['VK_DRIVER_FILES'] = str(candidates[0])
+        env['VK_LOADER_LAYERS_DISABLE'] = '~implicit~'
     data = Path(env.get('BB_DATA_DIR') or Path.home() / '.local/share/Bloodborne').resolve()
     out = data / 'out'
     out.mkdir(parents=True, exist_ok=True)

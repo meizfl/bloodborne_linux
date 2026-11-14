@@ -29,6 +29,8 @@ RUN bash /tmp/build-dependencies.sh ffmpeg
 RUN bash /tmp/build-dependencies.sh protobuf
 RUN bash /tmp/build-dependencies.sh miniupnpc
 RUN bash /tmp/build-dependencies.sh vulkan-loader
+COPY packaging/linux/modern-headers.sh /tmp/modern-headers.sh
+RUN bash /tmp/modern-headers.sh
 ENV PATH="/opt/gcc/bin:/opt/bb-deps/bin:${PATH}" \
     CMAKE_PREFIX_PATH=/opt/bb-deps PKG_CONFIG_PATH=/opt/bb-deps/lib/pkgconfig \
     LD_LIBRARY_PATH=/opt/bb-deps/lib:/opt/gcc/lib64

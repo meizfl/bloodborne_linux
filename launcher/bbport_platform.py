@@ -192,6 +192,12 @@ def wait_for_exit(pid, seconds=15):
         time.sleep(0.1)
 
 
+def runtime_file(port, name):
+    root = Path(port)
+    return next((root / folder / name for folder in ('game_runtime', 'bin', 'out')
+                 if (root / folder / name).is_file()), root / 'out' / name)
+
+
 def game_problem(port, env=None):
     env = os.environ if env is None else env
     if family() != 'linux' or platform.machine().lower() not in ('x86_64', 'amd64'):

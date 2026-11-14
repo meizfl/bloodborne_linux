@@ -19,7 +19,7 @@ import shutil
 import sys
 from pathlib import Path
 
-PORT = Path(__file__).resolve().parent.parent
+PORT = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(PORT))
 sys.path.insert(0, str(PORT / 'scripts'))
 import run  # noqa: E402 (run.py, shipped beside run.sh: Windows calls live inside its functions)

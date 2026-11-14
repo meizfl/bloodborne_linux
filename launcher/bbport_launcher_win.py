@@ -559,7 +559,7 @@ def fsr411_backend(settings):
 def native_fsr411_present():
     # Packaged beside bin/bb-probe.exe; a source build copies it to out/ (docs/FSR411_WINDOWS.md).
     return any(dll.is_file() and dll.stat().st_size > 0
-               for dll in (PORT_DIR / folder / 'amd_fidelityfx_upscaler_dx12.dll' for folder in ('bin', 'out')))
+               for dll in (PORT_DIR / folder / 'amd_fidelityfx_upscaler_dx12.dll' for folder in ('game_runtime', 'bin', 'out')))
 
 
 OUTPUTS = [('1280x720', ('1280 × 720 (Steam Deck)',)), ('1920x1080', ('1920 × 1080',)),
@@ -1505,7 +1505,8 @@ def game_environment(s, graphics=None):
             env['BB_SHADNET_PASSWORD'] = str(s.get('supermedo_pass', ''))
             env['BB_COMMUNITY_SERVER'] = SEAMLESS_GAME_SERVER
             env['BB_PROBE'] = str(BBSC_LAUNCH)
-            env['BBSC_EMULATOR'] = str(PORT_DIR / 'bin' / 'bb-probe.exe')
+            native = host.runtime_file(PORT_DIR, 'bb-probe.exe')
+            env['BBSC_EMULATOR'] = str(native if native.is_file() else PORT_DIR / 'bin' / 'bb-probe.exe')
             env.update(bbport_seamless.environment(s))  # the difficulty and options chosen on the Online page
     # Which build a server sees (shadNet's client version).
     # The servers tell clients apart by this User-Agent: name/version (bbport/1.9.1).
@@ -1738,7 +1739,7 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
             return
         except self.tk.TclError:
             pass
-        for icon in (PORT_DIR / 'launcher' / 'bloodborne.png', Path(self.app['game_dir']) / 'sce_sys' / 'icon0.png'):
+        for icon in (RESOURCE_DIR / 'launcher' / 'bloodborne.png', Path(self.app['game_dir']) / 'sce_sys' / 'icon0.png'):
             try:
                 self.icon = self.tk.PhotoImage(file=str(icon))
                 if self.icon.width() > 128:
@@ -5519,9 +5520,7 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
 
     def detect_hardware(self):
         filename = 'bb-gpu-capabilities.exe' if WINDOWS else 'bb-gpu-capabilities'
-        exe = PORT_DIR / 'bin' / filename
-        if not exe.is_file():
-            exe = PORT_DIR / 'out' / filename
+        exe = host.runtime_file(PORT_DIR, filename)
         env = dict(os.environ)
         for item in str(self.app.get('extra_env', '')).split():
             if '=' in item:
@@ -5552,7 +5551,7 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
             self.refresh_status()
         self.ui_calls.put(fsr411_done)
         self.fg401_support = query_framegen_support(PORT_DIR, env)
-        self.firewall_blocked = bbport_help.firewall_blocks(PORT_DIR / 'bin' / 'bb-probe.exe')
+        self.firewall_blocked = bbport_help.firewall_blocks(host.runtime_file(PORT_DIR, 'bb-probe.exe'))
         self.gpu_line = hardware.best_gpu_line(names)  # 'Name, discrete, 16304 MiB' for the hardware check
         try:
             self.cpu, self.ram = hardware.detect_cpu(), hardware.memory_gb()

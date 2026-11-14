@@ -4,6 +4,7 @@
 The renderer verifies the actual 4.1.2 provider when creating its context.
 fsr4vk files and its Vulkan feature contract apply only to FSR 4.1.1.
 """
+import bbport_platform as host
 import bbport_driver_runtime
 from bbport_fsr411 import valid_status
 from pathlib import Path
@@ -18,8 +19,7 @@ def query_method(port, method, paths=None, env=None, refresh=False):
     """Query SDK providers on the selected GPU without creating FSR buffers."""
     port = Path(port)
     api = 'vk' if method == 'vk' else 'dx12'
-    exe = port/'bin/bb-gpu-capabilities.exe'
-    if not exe.is_file(): exe = port/'out/bb-gpu-capabilities.exe'
+    exe = host.runtime_file(port, 'bb-gpu-capabilities.exe')
     if not exe.is_file(): exe = port/'out/gpu/bb-gpu-capabilities.exe'
     environment = dict(os.environ if env is None else env)
     runtime_dir = Path(environment.get('BB_TEST_FSR24_DIR') or exe.parent/'fsr24')

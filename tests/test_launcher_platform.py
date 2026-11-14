@@ -203,6 +203,7 @@ class UserDataMigrationTests(unittest.TestCase):
             target.mkdir()
             (target / 'bbport.ini').write_text('current settings')
             with mock.patch.object(host, 'data_dir', return_value=target), \
+                    mock.patch.object(host.Path, 'home', return_value=root), \
                     mock.patch.dict(host.os.environ, {}, clear=True):
                 host.migrate_user_data(source)
                 self.assertEqual((target / 'user/save.bin').read_bytes(), b'character')

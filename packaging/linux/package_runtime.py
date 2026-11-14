@@ -49,6 +49,15 @@ def package(source, target):
     licenses.mkdir(exist_ok=True)
     for doc in Path('/usr/share/doc').glob('*/copyright'):
         shutil.copy2(doc, licenses / (doc.parent.name + '.txt'))
+    for base in (Path('/tmp/bb-deps'), Path('/build/gpu/third_party')):
+        if base.is_dir():
+            for project in base.iterdir():
+                if not project.is_dir():
+                    continue
+                for pattern in ('LICENSE*', 'COPYING*'):
+                    for notice in project.glob(pattern):
+                        if notice.is_file():
+                            shutil.copy2(notice, licenses / (project.name + '-' + notice.name))
     for prefix in ('/opt/bb-deps/share/licenses', '/opt/gcc/distro-info/licenses'):
         if Path(prefix).is_dir():
             shutil.copytree(prefix, licenses / Path(prefix).parent.name, dirs_exist_ok=True)

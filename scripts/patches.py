@@ -324,7 +324,7 @@ def eboot_bytes(elf,start,end):
 # The groups' code does not overlap: Enemy Control rewrites code the FPS patches write too, so it
 # is checked with them. Recompute the fingerprints with --print-fingerprint (after a run of
 # CUSA03173 v01.09) when those patches change.
-BUILTIN_XML=Path(__file__).resolve().parent.parent/'patches/Bloodborne.xml'
+BUILTIN_XML=Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent))/'patches/Bloodborne.xml'
 HEAP_PATCH='Increased Graphics Heap Sizes'
 SHARES_FPS_CODE={'Enemy Control'}
 PATCH_GROUPS={
@@ -457,7 +457,7 @@ def port_patch_file(path, root):
     return Path(path).name.lower()=='bloodborne.xml' and ((port/'run.py').is_file() or (port/'bin'/'bb-probe.exe').is_file())
 
 
-def external_patches(directory, app_version='01.09', exclude=Path(__file__).resolve().parent.parent/'patches/Bloodborne.xml'):
+def external_patches(directory, app_version='01.09', exclude=Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent))/'patches/Bloodborne.xml'):
     """[(key, file, metadata)] of eboot patches for this version in directory/*.xml.
     key is "<file name>/<patch name>" (the launcher's selection, patches.json)."""
     found=[]
@@ -518,12 +518,12 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--patches-dir',type=Path,help='third-party patch XML files (shadPS4 format)')
     p.add_argument('--patches-config',type=Path,help='patches.json: enabled/disabled external patches')
-    p.add_argument('--xml',type=Path,default=Path(__file__).resolve().parent.parent/'patches/Bloodborne.xml')
+    p.add_argument('--xml',type=Path,default=Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent))/'patches/Bloodborne.xml')
     p.add_argument('--fps',choices=sorted(FPS_PRESETS),default='uncap')
     p.add_argument('--extra',default='',help='additional patch names, separated by ";"')
     p.add_argument('--app-version',default='01.09')
-    p.add_argument('--out',type=Path,default=Path(__file__).resolve().parent.parent/'out')
-    p.add_argument('--settings',type=Path,default=Path(__file__).resolve().parent.parent/'bbport.ini')
+    p.add_argument('--out',type=Path,default=Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent))/'out')
+    p.add_argument('--settings',type=Path,default=Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent))/'bbport.ini')
     p.add_argument('--game-dir',type=Path,default=Path(os.environ.get('BB_GAME_DIR','../CUSA03173')))
     p.add_argument('--render-res',default='',help='render resolution WxH (overrides the preset)')
     p.add_argument('--print-preset-size',action='store_true',help='print the selected preset size, if reduced')

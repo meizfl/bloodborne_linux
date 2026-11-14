@@ -62,8 +62,8 @@ def load_fonts(root):
             ctypes.windll.gdi32.AddFontResourceExW(str(path), 0x10, 0)  # FR_PRIVATE
     elif sys.platform.startswith('linux'):
         # Tk/Xft uses Fontconfig. Register before Tk first resolves our font families.
-        import ctypes.util
-        fc = ctypes.CDLL(ctypes.util.find_library('fontconfig') or 'libfontconfig.so.1')
+        from ctypes.util import find_library
+        fc = ctypes.CDLL(find_library('fontconfig') or 'libfontconfig.so.1')
         fc.FcConfigGetCurrent.restype = ctypes.c_void_p
         fc.FcConfigAppFontAddFile.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
         fc.FcConfigAppFontAddFile.restype = ctypes.c_int
