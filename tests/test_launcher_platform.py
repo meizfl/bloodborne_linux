@@ -16,6 +16,34 @@ import bbport_launcher_win as launcher
 
 
 class PlatformTests(unittest.TestCase):
+    def test_portable_mode_is_opt_in_and_uses_the_executable_directory(self):
+        with tempfile.TemporaryDirectory(prefix='portable launcher ') as folder, \
+                mock.patch.object(host, 'family', return_value='linux'):
+            root = Path(folder).resolve()
+            env = {'XDG_CONFIG_HOME': '/global'}
+            self.assertFalse(host.configure_portable(root / 'BloodborneLauncher', True, env))
+            (root / 'portable-mode').touch()
+            self.assertTrue(host.configure_portable(root / 'BloodborneLauncher', True, env))
+            self.assertEqual(env['BB_DATA_DIR'], str(root))
+            self.assertEqual(env['XDG_CONFIG_HOME'], str(root / 'config'))
+
+    def test_frozen_linux_normal_start_does_not_call_windows_updater(self):
+        calls = mock.Mock()
+        with mock.patch.object(launcher, 'WINDOWS', False), mock.patch.object(launcher, 'FROZEN', True), \
+                mock.patch.object(sys, 'argv', ['BloodborneLauncher']), \
+                mock.patch.object(launcher, 'load_settings', return_value={}), \
+                mock.patch.object(launcher, 'restore_benchmark_backup'), \
+                mock.patch.object(launcher, 'one_launcher', return_value=True), \
+                mock.patch.object(launcher, 'bring_to_front_on_request'), \
+                mock.patch.object(launcher, 'Launcher', calls.Launcher), \
+                mock.patch.object(launcher.updater, 'underway', side_effect=AssertionError('WinAPI called')), \
+                mock.patch.object(launcher.updater, 'clear_leftovers', side_effect=AssertionError('WinAPI called')), \
+                mock.patch('tkinter.Tk', return_value=calls.root), \
+                mock.patch.object(launcher, 'LANG', launcher.LANG), mock.patch.dict(launcher.saves.WORDS):
+            launcher.main()
+        calls.Launcher.assert_called_once()
+        calls.root.mainloop.assert_called_once()
+
     def test_windows_keeps_existing_settings_location(self):
         self.assertEqual(host.config_dir({'APPDATA': '/roaming'}, '/home/test', 'windows'),
                          Path('/roaming/bbport-launcher'))

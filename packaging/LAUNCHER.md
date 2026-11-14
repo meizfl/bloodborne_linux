@@ -28,6 +28,10 @@ Linux settings use `$XDG_CONFIG_HOME/bbport-launcher-tk`, defaulting to
 Linux generated files, saves and `bbport.ini` use `$XDG_DATA_HOME/bbport`, defaulting
 to `~/.local/share/bbport`. `BB_DATA_DIR` overrides that location on either OS.
 
+For a self-contained Linux installation, create an empty `portable-mode` file
+beside the frozen executable. Direct launches then use that directory for game
+data and `config/` for the launcher profile, without requiring a wrapper script.
+
 ## Build a distributable launcher
 
 Build on the target OS; PyInstaller does not cross-compile between Windows and

@@ -20,6 +20,19 @@ def family(name=None):
     return 'linux' if name.startswith('linux') else 'posix'
 
 
+def configure_portable(executable=None, frozen=None, env=None):
+    """Opt-in local Linux profiles, applied before the UI module reads its paths."""
+    frozen = getattr(sys, 'frozen', False) if frozen is None else frozen
+    if not frozen or family() != 'linux':
+        return False
+    root = Path(executable or sys.executable).resolve().parent
+    if not (root / 'portable-mode').is_file():
+        return False
+    env = os.environ if env is None else env
+    env.update(BB_PORT_DIR=str(root), BB_DATA_DIR=str(root), XDG_CONFIG_HOME=str(root / 'config'))
+    return True
+
+
 def config_dir(env=None, home=None, host=None):
     env, home, host = os.environ if env is None else env, Path.home() if home is None else Path(home), host or family()
     if host == 'windows':

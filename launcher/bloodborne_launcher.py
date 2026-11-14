@@ -2,11 +2,14 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 """Platform-neutral entry point; the legacy Windows entry point stays compatible."""
 import json
+import os
 from pathlib import Path
 import sys
 
 
 def main():
+    import bbport_platform
+    bbport_platform.configure_portable()
     import bbport_launcher_win as app
     if '--check-runtime' in sys.argv:
         app.attach_stdio()
@@ -36,6 +39,8 @@ def smoke_test(app):
     from tkinter import ttk, filedialog, messagebox
 
     with tempfile.TemporaryDirectory(prefix='bbport-ui-') as folder:
+        os.environ['BB_CONFIG'] = str(Path(folder) / 'bbport.ini')
+        os.environ['BB_DATA_DIR'] = folder
         app.DATA_DIR = app.CONFIG_DIR = Path(folder)
         app.CONFIG_FILE = Path(folder) / 'settings.json'
         app.CONFIG_FILE.write_text(json.dumps({'check_updates': False, 'setup_done': True}), encoding='utf-8')
@@ -65,6 +70,38 @@ def smoke_test(app):
         if errors:
             raise RuntimeError('\n'.join(errors))
         print('PASS: all launcher pages')
+        # Exercise the real startup path too: it performs frozen-only work that
+        # constructing Launcher directly cannot cover (e.g. update cleanup).
+        original = app.Launcher
+        startup = []
+        class StartupWindow(original):
+            def __init__(self, root, *args):
+                super().__init__(root, *args)
+                startup.append(self)
+                root.after(700, root.quit)
+            def callback_error(self, *args):
+                failed(*args)
+                self.root.quit()
+        saved = app.Launcher, app.one_launcher, app.bring_to_front_on_request, sys.argv
+        app.Launcher = StartupWindow
+        app.one_launcher = lambda: True
+        app.bring_to_front_on_request = lambda *args: None
+        sys.argv = [sys.argv[0]]
+        try:
+            app.main()
+            assert startup, 'normal entry point did not create the launcher'
+        finally:
+            for window in startup:
+                window.pad_stop()
+                if window.custom_frame:
+                    window.custom_frame.uninstall()
+                for job in window.root.tk.splitlist(window.root.tk.call('after', 'info')):
+                    window.root.after_cancel(job)
+                window.root.destroy()
+            app.Launcher, app.one_launcher, app.bring_to_front_on_request, sys.argv = saved
+        if errors:
+            raise RuntimeError('\n'.join(errors))
+        print('PASS: normal launcher entry point')
     return 0
 
 

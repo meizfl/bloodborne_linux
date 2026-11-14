@@ -7559,7 +7559,7 @@ def main():
     # What finished or failed updates left behind, only now: before, a second start deleted the files an update was
     # still copying from. clear_leftovers keeps them while an installer holds the update mutex, and finishes or
     # undoes a swap that stopped halfway. It and the installer's outcome go into the next game's log.
-    if FROZEN:
+    if WINDOWS and FROZEN:
         textfile.REPAIRS.extend(updater.clear_leftovers(PORT_DIR, UPDATE_DIR) or [])
     textfile.REPAIRS.extend(line for line in os.environ.pop('BB_UPDATE_RESULT', '').splitlines() if line.strip())
     import tkinter as tk
