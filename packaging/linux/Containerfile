@@ -1,0 +1,35 @@
+# Debian 11 is the ABI baseline for both Python/Tk and the native runtime.
+FROM docker.io/library/python:3.12-bullseye
+RUN printf '%s\n' \
+    'deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/20260101T000000Z bullseye main' \
+    'deb [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/20260101T000000Z bullseye-security main' > /etc/apt/sources.list \
+    && rm -f /etc/apt/sources.list.d/* \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl git ninja-build pkg-config patchelf binutils xvfb xauth \
+    libfontconfig1-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
+    libxfixes-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols \
+    libasound2-dev libpulse-dev libudev-dev libdrm-dev libgbm-dev libegl1-mesa-dev \
+    libvulkan-dev libboost-dev libxxhash-dev libssl-dev zlib1g-dev \
+    libminiupnpc-dev nlohmann-json3-dev libprotobuf-dev protobuf-compiler nasm \
+    && rm -rf /var/lib/apt/lists/*
+RUN python -m pip install --no-cache-dir cmake==3.31.6 Pillow==11.3.0 PyInstaller==6.16.0
+COPY packaging/linux/build-dependencies.sh /tmp/build-dependencies.sh
+RUN bash /tmp/build-dependencies.sh gcc
+RUN bash /tmp/build-dependencies.sh fmt
+RUN bash /tmp/build-dependencies.sh robin
+RUN bash /tmp/build-dependencies.sh vulkan-headers
+RUN bash /tmp/build-dependencies.sh vma
+RUN bash /tmp/build-dependencies.sh zycore
+# Zydis 4.1 expects the older unnamespaced Zycore target.
+RUN printf '\nadd_library(Zycore ALIAS Zycore::Zycore)\n' >> /opt/bb-deps/lib/cmake/zycore/zycore-config.cmake
+RUN bash /tmp/build-dependencies.sh zydis
+RUN bash /tmp/build-dependencies.sh SDL
+RUN bash /tmp/build-dependencies.sh glslang
+RUN bash /tmp/build-dependencies.sh ffmpeg
+RUN bash /tmp/build-dependencies.sh protobuf
+RUN bash /tmp/build-dependencies.sh miniupnpc
+RUN bash /tmp/build-dependencies.sh vulkan-loader
+ENV PATH="/opt/gcc/bin:/opt/bb-deps/bin:${PATH}" \
+    CMAKE_PREFIX_PATH=/opt/bb-deps PKG_CONFIG_PATH=/opt/bb-deps/lib/pkgconfig \
+    LD_LIBRARY_PATH=/opt/bb-deps/lib:/opt/gcc/lib64
+WORKDIR /src

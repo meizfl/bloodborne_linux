@@ -497,6 +497,10 @@ void runtime_restart(void) {
     /* The new launch waits for this process's GPU device to go away (run.py --after). */
     TerminateProcess(GetCurrentProcess(),0);
 #else
+    if (getenv("BB_LAUNCHER_MANAGED")) {
+        puts("Runtime: requesting restart from the launcher");
+        _exit(85); /* bbport_linux_runner repeats preparation after this process exits. */
+    }
     puts("Runtime: restarting through run.sh");
     syscall(SYS_close_range, 3u, ~0u, 0u);
     execlp("bash", "bash", "run.sh", (char *)NULL);

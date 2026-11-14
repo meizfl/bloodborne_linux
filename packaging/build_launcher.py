@@ -25,6 +25,7 @@ def copy_resources(target):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--onedir', action='store_true', help='legacy folder package instead of a single executable')
     parser.add_argument('--source-only', action='store_true', help='create a source zip; requires Python, Tk and Pillow')
     parser.add_argument('--dist-dir', type=Path, default=ROOT / 'dist/launcher')
     parser.add_argument('--check', action='store_true', help='check imports/Tcl/assets in the frozen executable')
@@ -44,14 +45,17 @@ def main(argv=None):
     name = 'Bloodborne' if host == 'windows' else 'BloodborneLauncher'
     work = ROOT / 'out/launcher-build' / host
     work.mkdir(parents=True, exist_ok=True)
-    command = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--onedir', '--windowed',
+    command = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--onedir' if args.onedir else '--onefile', '--windowed',
                '--name', name, '--distpath', str(destination / host), '--workpath', str(work / 'work'),
-               '--specpath', str(work), '--paths', str(ROOT / 'launcher'), '--paths', str(ROOT / 'scripts'),
+               '--specpath', str(work), '--paths', str(ROOT), '--paths', str(ROOT / 'launcher'), '--paths', str(ROOT / 'scripts'),
                '--add-data', str(ROOT / 'launcher/assets') + os.pathsep + 'assets']
+    for item in ('scripts', 'patches', 'data', 'run.py', 'LICENSE'):
+        command += ['--add-data', str(ROOT / item) + os.pathsep + (item if (ROOT / item).is_dir() else '.')]
+    command += ['--add-data', str(ROOT / 'launcher/bloodborne.png') + os.pathsep + 'launcher']
     # The preparation scripts run dynamically in the Windows executable's --script role.
     for module in ('argparse', 'base64', 'bisect', 'collections', 'contextlib', 'hashlib', 'json',
                    're', 'shutil', 'struct', 'tempfile', 'xml.etree.ElementTree', 'urllib.request', 'ctypes.wintypes',
-                   'PIL._tkinter_finder', 'PIL._imagingtk'):
+                   'PIL._tkinter_finder', 'PIL._imagingtk', 'run', 'linux_start', 'bbport_linux_runner'):
         command += ['--hidden-import', module]
     if host == 'windows':
         from PIL import Image
@@ -62,22 +66,34 @@ def main(argv=None):
     command.append(str(ROOT / 'launcher/bloodborne_launcher.py'))
     subprocess.run(command, cwd=ROOT, check=True)
     package = destination / host / name
-    copy_resources(package)
-    executable = package / (name + ('.exe' if host == 'windows' else ''))
+    executable = package / (name + ('.exe' if host == 'windows' else '')) if args.onedir else package.with_suffix('.exe' if host == 'windows' else '')
+    if args.onedir:
+        copy_resources(package)
+    check_dir = package if args.onedir else executable.parent
     if args.check:
-        checked = subprocess.run([str(executable), '--check-runtime'], cwd=package,
+        checked = subprocess.run([str(executable), '--check-runtime'], cwd=check_dir,
                                  capture_output=True, text=True, timeout=30)
         if checked.returncode:
             raise RuntimeError(checked.stdout + checked.stderr)
         print(checked.stdout)
+        script_check = subprocess.run([str(executable), '--script', 'patches.py', '--help'],
+                                      cwd=check_dir, capture_output=True, text=True, timeout=30)
+        if script_check.returncode or 'usage:' not in script_check.stdout:
+            raise RuntimeError(script_check.stdout + script_check.stderr)
+        print('PASS: embedded preparation script without external Python')
     if args.ui_check:
-        checked = subprocess.run([str(executable), '--smoke-test'], cwd=package,
+        checked = subprocess.run([str(executable), '--smoke-test'], cwd=check_dir,
                                  capture_output=True, text=True, timeout=120)
         if checked.returncode:
             raise RuntimeError(checked.stdout + checked.stderr)
         print(checked.stdout)
-    archive = shutil.make_archive(str(destination / ('BloodborneLauncher-' + host)), 'zip',
-                                  package.parent, package.name)
+    if args.onedir:
+        archive = shutil.make_archive(str(destination / ('BloodborneLauncher-' + host)), 'zip', package.parent, package.name)
+    else:
+        import zipfile
+        archive = destination / ('BloodborneLauncher-' + host + '.zip')
+        with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED) as zipped:
+            zipped.write(executable, executable.name)
     print(archive)
     return 0
 

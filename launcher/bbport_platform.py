@@ -29,15 +29,15 @@ def configure_portable(executable=None, frozen=None, env=None):
     if not (root / 'portable-mode').is_file():
         return False
     env = os.environ if env is None else env
-    env.update(BB_PORT_DIR=str(root), BB_DATA_DIR=str(root), BB_LAUNCHER_CONFIG_HOME=str(root / 'config'))
+    env.update(BB_PORT_DIR=str(root))
     return True
 
 
 def config_dir(env=None, home=None, host=None):
     env, home, host = os.environ if env is None else env, Path.home() if home is None else Path(home), host or family()
-    if host == 'windows':
-        return Path(env.get('APPDATA') or home) / 'bbport-launcher'
-    return Path(env.get('BB_LAUNCHER_CONFIG_HOME') or env.get('XDG_CONFIG_HOME') or home / '.config') / 'bbport-launcher-tk'
+    if env.get('BB_LAUNCHER_CONFIG_HOME'):
+        return Path(env['BB_LAUNCHER_CONFIG_HOME'])
+    return data_dir(env, home, host)
 
 
 def data_dir(env=None, home=None, host=None):
@@ -45,8 +45,34 @@ def data_dir(env=None, home=None, host=None):
     if env.get('BB_DATA_DIR'):
         return Path(env['BB_DATA_DIR']).expanduser()
     if host == 'windows':
-        return Path(env.get('LOCALAPPDATA') or home / 'AppData/Local') / 'bbport'
-    return Path(env.get('XDG_DATA_HOME') or home / '.local/share') / 'bbport'
+        return Path(env.get('LOCALAPPDATA') or env.get('APPDATA') or home / 'AppData/Local') / 'Bloodborne'
+    return home / '.local/share/Bloodborne'
+
+
+def migrate_user_data(installation):
+    """Copy legacy local data once, without overwriting a user's existing profile."""
+    import shutil
+    target = data_dir()
+    installation = Path(installation)
+    if os.environ.get('BB_DATA_DIR') or (target / '.migration-complete').exists():
+        return
+    target.mkdir(parents=True, exist_ok=True)
+    for name in ('user', 'bbport.ini', 'input.ini', 'mods', 'mods.json', 'patches.json'):
+        source, destination = installation / name, target / name
+        if source.exists() and not destination.exists():
+            if source.is_dir():
+                temporary = target / ('.migrate-' + name)
+                shutil.rmtree(temporary, ignore_errors=True)
+                shutil.copytree(source, temporary)
+                temporary.rename(destination)
+            else:
+                shutil.copy2(source, destination)
+    for source in (installation / 'config/bbport-launcher-tk/settings.json',
+                   Path.home() / '.config/bbport-launcher-tk/settings.json',
+                   Path(os.environ.get('APPDATA', str(Path.home()))) / 'bbport-launcher/settings.json'):
+        if source.is_file() and not (target / 'settings.json').exists():
+            shutil.copy2(source, target / 'settings.json')
+    (target / '.migration-complete').write_text(str(installation), encoding='utf-8')
 
 
 def language():
@@ -171,7 +197,7 @@ def game_problem(port, env=None):
     if family() != 'linux' or platform.machine().lower() not in ('x86_64', 'amd64'):
         return 'The native Linux game runtime requires an x86-64 Linux system.'
     probe = env.get('BB_PROBE')
-    candidates = [Path(probe)] if probe else [Path(port) / folder / 'bb-probe' for folder in ('bin', 'out')]
+    candidates = [Path(probe)] if probe else [Path(port) / folder / 'bb-probe' for folder in ('game_runtime', 'bin', 'out')]
     if not any(path.is_file() and os.access(path, os.X_OK) for path in candidates):
         return 'Native game loader not found. Build the game with bash build.sh or set BB_PROBE.'
     return None
@@ -192,6 +218,11 @@ def desktop_shortcut(command, port, data):
     desktop.mkdir(parents=True, exist_ok=True)
     def quote(value):
         return '"' + str(value).replace('%', '%%').replace('\\', '\\\\').replace('"', '\\"').replace('`', '\\`').replace('$', '\\$') + '"'
+    icon = Path(data) / 'launcher.png'
+    artwork = Path(getattr(sys, '_MEIPASS', port)) / 'launcher/bloodborne.png'
+    if artwork.is_file():
+        icon.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(artwork, icon)
     args = ['env', 'BB_DATA_DIR=' + str(data)]
     if os.environ.get('XDG_CONFIG_HOME'):
         args.append('XDG_CONFIG_HOME=' + os.environ['XDG_CONFIG_HOME'])
@@ -199,7 +230,7 @@ def desktop_shortcut(command, port, data):
     text = ('[Desktop Entry]\nType=Application\nName=Bloodborne\nTerminal=false\n'
             'Exec=' + ' '.join(quote(arg) for arg in args) + '\n'
             'Path=' + str(Path(port).resolve()) + '\n'
-            'Icon=' + str(Path(port).resolve() / 'launcher/bloodborne.png') + '\n')
+            'Icon=' + str(icon) + '\n')
     target = desktop / 'Bloodborne.desktop'
     target.write_text(text, encoding='utf-8')
     target.chmod(0o755)
@@ -231,9 +262,12 @@ def run_game(port, config, args):
         print('A game is already being prepared or running.', file=sys.stderr)
         return 1
     os.set_inheritable(stream.fileno(), True)
-    command = game_command(port) + list(args)
     os.chdir(port)
-    os.execvpe(command[0], command, dict(os.environ))
+    from bbport_linux_runner import main
+    try:
+        return main(port, args)
+    finally:
+        stream.close()
 
 
 class GameJob:

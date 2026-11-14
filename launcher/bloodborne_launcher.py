@@ -8,8 +8,13 @@ import sys
 
 
 def main():
+    if getattr(sys, 'frozen', False):
+        sys.path.insert(0, str(Path(sys._MEIPASS) / 'scripts'))
     import bbport_platform
     bbport_platform.configure_portable()
+    if getattr(sys, 'frozen', False) and not any(
+            flag in sys.argv for flag in ('--check-runtime', '--smoke-test', '--run', '--script')):
+        bbport_platform.migrate_user_data(Path(sys.executable).resolve().parent)
     import bbport_launcher_win as app
     if '--check-runtime' in sys.argv:
         app.attach_stdio()

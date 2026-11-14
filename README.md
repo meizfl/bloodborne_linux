@@ -204,3 +204,8 @@ the FSR 4.1 launcher files (`launcher/bbport_fsr41*.py`, `launcher/bbport_fsr412
 `launcher/bbport_driver_runtime.py`). The program built from them together is therefore distributed
 under the GNU GPL v3 or later (`licenses\GPL-3.0.txt` in the download). Third-party components keep their own
 licenses (see `licenses\` in the download).
+
+## Portable Windows/Linux launcher
+
+Single-executable launcher, separate `game_runtime/`, and user data outside the install directory.
+See [build instructions](packaging/BUILD.md) for Debian 11/glibc 2.31 builds with Podman and native Windows builds.

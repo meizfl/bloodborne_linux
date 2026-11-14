@@ -38,9 +38,10 @@ WINDOWS = sys.platform == 'win32'
 PORT_DIR = Path(os.environ['BB_PORT_DIR']).expanduser() if os.environ.get('BB_PORT_DIR') else (
     Path(sys.executable).resolve().parent if FROZEN else
     Path(__file__).resolve().parent.parent)
-sys.path.insert(0, str(PORT_DIR / 'scripts'))
+RESOURCE_DIR = Path(getattr(sys, '_MEIPASS', PORT_DIR))
+sys.path.insert(0, str(RESOURCE_DIR / 'scripts'))
 import fetch_fsr4vk
-DATA_DIR = Path(os.environ.get('BB_DATA_DIR', PORT_DIR)) if WINDOWS else host.data_dir()
+DATA_DIR = host.data_dir()
 # Co-op test build: its own settings, and no updates (a public release would replace it).
 COOP_TEST = False
 CONFIG_DIR = host.config_dir()
@@ -171,9 +172,13 @@ def run_role(argv):
             pass
     sys.stdout, sys.stderr = LossyStream(sys.stdout), LossyStream(sys.stderr)
     if argv[0] == '--script':
-        path, sys.argv = argv[1], argv[1:]
+        path = Path(argv[1])
+        if not path.is_file():
+            path = RESOURCE_DIR / 'scripts' / path.name
+        path = str(path)
+        sys.argv = [path, *argv[2:]]
     else:
-        path = str(PORT_DIR / 'run.py')
+        path = str(RESOURCE_DIR / 'run.py')
         sys.argv = [path, *argv[1:]]
     try:
         runpy.run_path(path, run_name='__main__')
@@ -459,7 +464,7 @@ INI_DEFAULTS = {'upscaler': 'fsr3', 'preset': '1', 'sharpen': '1', 'sharpness': 
                 'button_prompts': 'auto',
                 'frame_gen': 'off', 'frame_gen_multiplier': '2', 'frame_gen_fit_display': '0',
                 **{key: '1' if on else '0' for key, _t, on in EFFECTS + EXTRAS + CHEATS + TWEAKS}}
-APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR.parent / 'CUSA03173'), 'user_dir': '', 'cache_dir': '',
+APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR / 'Game') if FROZEN else str(PORT_DIR.parent / 'CUSA03173'), 'user_dir': '', 'cache_dir': '',
                 'dlc_dir': '',
                 'mods_dir': '', 'mods_enabled': True, 'patches_dir': '', 'language': '1',
                 'voice_language': 'auto',
@@ -1410,6 +1415,8 @@ def game_environment(s, graphics=None):
     graphics = graphics if graphics is not None else load_ini(s)[0]
     env['BB_UI_LANGUAGE'] = s.get('ui_language') or LANG
     env['BB_GAME_DIR'] = s['game_dir']
+    env['BB_DATA_DIR'] = str(DATA_DIR)
+    env['BB_CONFIG'] = str(ini_path())
     if s['user_dir']:
         env['BB_USER_DIR'] = s['user_dir']
     if cache_folder(s) != saves_folder(s):
@@ -1437,7 +1444,7 @@ def game_environment(s, graphics=None):
         env['BB_WINDOW_MODE'] = ('fullscreen' if s.get('exclusive_fullscreen') else 'borderless') if (
             s['fullscreen'] or s.get('borderless_fullscreen')) else 'windowed'
         env['BB_PREBUILT'] = '1'
-        env.setdefault('BB_PROBE', str(next((p for p in (PORT_DIR / 'bin' / 'bb-probe', PORT_DIR / 'out' / 'bb-probe')
+        env.setdefault('BB_PROBE', str(next((p for p in (PORT_DIR / 'game_runtime' / 'bb-probe', PORT_DIR / 'bin' / 'bb-probe', PORT_DIR / 'out' / 'bb-probe')
                                             if p.is_file()), PORT_DIR / 'out' / 'bb-probe')))
         env['BB_DATA_DIR'] = str(DATA_DIR)
     if s['fullscreen'] and s.get('exclusive_fullscreen'):

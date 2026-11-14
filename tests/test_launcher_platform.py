@@ -59,9 +59,9 @@ class PlatformTests(unittest.TestCase):
             self.assertFalse(host.configure_portable(root / 'BloodborneLauncher', True, env))
             (root / 'portable-mode').touch()
             self.assertTrue(host.configure_portable(root / 'BloodborneLauncher', True, env))
-            self.assertEqual(env['BB_DATA_DIR'], str(root))
+            self.assertNotIn('BB_DATA_DIR', env)
             self.assertEqual(env['XDG_CONFIG_HOME'], '/global')
-            self.assertEqual(host.config_dir(env=env), root / 'config' / 'bbport-launcher-tk')
+            self.assertEqual(host.config_dir(env=env), Path.home() / '.local/share/Bloodborne')
 
     def test_frozen_linux_normal_start_does_not_call_windows_updater(self):
         calls = mock.Mock()
@@ -80,14 +80,14 @@ class PlatformTests(unittest.TestCase):
         calls.Launcher.assert_called_once()
         calls.root.mainloop.assert_called_once()
 
-    def test_windows_keeps_existing_settings_location(self):
+    def test_windows_uses_appdata_for_settings(self):
         self.assertEqual(host.config_dir({'APPDATA': '/roaming'}, '/home/test', 'windows'),
-                         Path('/roaming/bbport-launcher'))
+                         Path('/roaming/Bloodborne'))
 
     def test_linux_uses_xdg_and_keeps_gtk_profile_separate(self):
         self.assertEqual(host.config_dir({'XDG_CONFIG_HOME': '/config'}, '/home/test', 'linux'),
-                         Path('/config/bbport-launcher-tk'))
-        self.assertEqual(host.data_dir({'XDG_DATA_HOME': '/data'}, '/home/test', 'linux'), Path('/data/bbport'))
+                         Path('/home/test/.local/share/Bloodborne'))
+        self.assertEqual(host.data_dir({'XDG_DATA_HOME': '/data'}, '/home/test', 'linux'), Path('/home/test/.local/share/Bloodborne'))
         self.assertEqual(host.data_dir({'BB_DATA_DIR': '/custom'}, '/home/test', 'linux'), Path('/custom'))
 
     def test_no_windows_dll_is_loaded_when_importing_on_linux(self):
@@ -152,8 +152,10 @@ class PosixProcessTests(unittest.TestCase):
     def test_preparation_lock_survives_exec_and_blocks_second_launch(self):
         with tempfile.TemporaryDirectory() as folder:
             port, config = Path(folder), Path(folder) / 'config'
-            (port / 'run.sh').write_text('echo ready\nsleep 60\n', encoding='utf-8')
+            (port / 'unused').touch()
             code = ('import sys; sys.path.insert(0, sys.argv[1]); import bbport_platform as h; '
+                    'import bbport_linux_runner as r; import time; '
+                    'r.main=lambda *a: (print("ready", flush=True), time.sleep(60))[1]; '
                     'raise SystemExit(h.run_game(sys.argv[2], sys.argv[3], []))')
             command = [sys.executable, '-c', code, str(ROOT / 'launcher'), str(port), str(config)]
             first = subprocess.Popen(command, stdout=subprocess.PIPE, text=True, start_new_session=True)
@@ -188,3 +190,24 @@ class DesktopBrowserTests(unittest.TestCase):
         env = spawn.call_args.kwargs['env']
         self.assertEqual(env['XDG_CONFIG_HOME'], '/system/profile')
         self.assertEqual(env['LD_LIBRARY_PATH'], '/system/libs')
+
+
+class UserDataMigrationTests(unittest.TestCase):
+    def test_migration_copies_saves_and_preserves_existing_settings_and_source(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            source, target = root / 'install', root / 'profile'
+            (source / 'user').mkdir(parents=True)
+            (source / 'user/save.bin').write_bytes(b'character')
+            (source / 'bbport.ini').write_text('old settings')
+            target.mkdir()
+            (target / 'bbport.ini').write_text('current settings')
+            with mock.patch.object(host, 'data_dir', return_value=target), \
+                    mock.patch.dict(host.os.environ, {}, clear=True):
+                host.migrate_user_data(source)
+                self.assertEqual((target / 'user/save.bin').read_bytes(), b'character')
+                self.assertEqual((target / 'bbport.ini').read_text(), 'current settings')
+                self.assertEqual((source / 'user/save.bin').read_bytes(), b'character')
+                (target / 'user/save.bin').write_bytes(b'new character')
+                host.migrate_user_data(source)
+                self.assertEqual((target / 'user/save.bin').read_bytes(), b'new character')

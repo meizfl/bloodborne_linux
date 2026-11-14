@@ -396,7 +396,8 @@ def frame_pacing(env, fps):
 
 def find_executable(name):
     """bin/ (packaged), else out/ (built with build.sh)."""
-    for candidate in (PORT / 'bin' / name, PORT / 'out' / name):
+    installed = Path(os.environ.get('BB_PORT_DIR') or (Path(sys.executable).parent if getattr(sys, 'frozen', False) else PORT))
+    for candidate in (installed / 'game_runtime' / name, installed / 'bin' / name, installed / 'out' / name):
         if candidate.is_file():
             return candidate
     return None

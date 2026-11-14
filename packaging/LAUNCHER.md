@@ -22,15 +22,10 @@ decrypted game's folder in the launcher. It finds `bin/bb-probe` or `out/bb-prob
 `BB_PROBE` can point to an existing native loader (with its libraries and the
 capabilities helper). The game still needs x86-64 and a compatible Vulkan driver.
 
-Windows settings keep their existing `%APPDATA%/bbport-launcher` location.
-Linux settings use `$XDG_CONFIG_HOME/bbport-launcher-tk`, defaulting to
-`~/.config/bbport-launcher-tk`; this does not overwrite the GTK launcher's profile.
-Linux generated files, saves and `bbport.ini` use `$XDG_DATA_HOME/bbport`, defaulting
-to `~/.local/share/bbport`. `BB_DATA_DIR` overrides that location on either OS.
-
-For a self-contained Linux installation, create an empty `portable-mode` file
-beside the frozen executable. Direct launches then use that directory for game
-data and `config/` for the launcher profile, without requiring a wrapper script.
+Settings and saves use `$HOME/.local/share/Bloodborne` on Linux and
+`%LOCALAPPDATA%\Bloodborne` on Windows. The default package is a single executable,
+with the native runtime beside it in `game_runtime/`.
+See [BUILD.md](BUILD.md) for Podman/Debian 11 and Windows build instructions.
 
 ## Build a distributable launcher
 
@@ -48,10 +43,10 @@ python packaging/build_launcher.py --check --ui-check
 
 `--ui-check` needs a desktop session (or `xvfb-run -a` on Linux). The archive is
 `dist/launcher/BloodborneLauncher-windows.zip` or
-`dist/launcher/BloodborneLauncher-linux.zip`. Keep its whole directory together:
-the executable, `_internal`, scripts and assets are all required. No game files
-or native game runtime are included. Linux's game preparation scripts use the
-system Python 3; Pillow there is optional for trophy pictures.
+`dist/launcher/BloodborneLauncher-linux.zip`. The default archive contains one
+executable. Python, Tk, artwork and preparation scripts are embedded; no system
+Python or launch wrapper is needed. The native runtime and game files remain
+separate. `--onedir` retains the legacy directory package.
 
 For an existing source checkout, a standalone launcher can use its engine and
 scripts with `BB_PORT_DIR=/path/to/checkout`. Without an engine, the launcher opens
@@ -65,7 +60,7 @@ Unpack it and run `python launch.py` with Python, Tk and Pillow installed.
 Windows keeps its native title bar integration, tray, process job objects,
 updater, shortcuts and Steam integration. Linux uses the desktop's window frame,
 XDG paths, `xdg-open`, desktop entries, POSIX process groups and file locks.
-The launch lock includes preparation and survives the `exec` into the game.
+The launch lock includes preparation, gameplay and in-game restarts.
 Stop targets the current launch's process group, including its child processes.
 
 Windows DLL injection (BBSC), DirectX/Windows FSR providers, the Windows updater
@@ -88,7 +83,7 @@ python packaging/build_launcher.py --check --ui-check
 The smoke test builds every page on a temporary profile, without a game or an
 account. CI runs the tests, source UI, native package checks and frozen UI on both
 Windows and Linux. On Linux, the tests also exercise process-group termination
-and the preparation lock across a real `exec`.
+and the preparation lock across the native game lifetime.
 
 Local validation: Arch Linux, Python 3.14, Tcl/Tk 8.6, Pillow 12.3, PyInstaller
 6.22.3. The native game reached the title screen with an RX 5600 XT and RADV;
