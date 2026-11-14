@@ -3988,8 +3988,11 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
                                                   (_('Health ×'), _('Damage ×'), _('Poise ×')))):
             ttk.Label(custom, text=title).grid(row=0, column=column * 2, sticky='w',
                                                padx=(0 if column == 0 else px(14), px(4)))
-            ttk.Spinbox(custom, from_=1, to=10, increment=0.25, width=5, textvariable=self.var(key, 'app')).grid(
-                row=0, column=column * 2 + 1, sticky='w')
+            multiplier = ttk.Spinbox(custom, from_=1, to=10, increment=0.25, width=5,
+                                     textvariable=self.var(key, 'app'))
+            multiplier.grid(row=0, column=column * 2 + 1, sticky='w')
+            self.index_entry(multiplier, title, _('Custom'), key)
+        self.index_only([custom], _('Custom'), 'yt_enemies')
         enemies_var = self.var('yt_enemies', 'app')
 
         def show_custom(*_a):

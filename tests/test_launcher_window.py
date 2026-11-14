@@ -208,6 +208,10 @@ class SideBarLiveTests(LiveLauncher, unittest.TestCase):
         app.show('advanced')  # a long page, so that a wheel that went to it would scroll it
         app.offer_update('9.9.9', '', 'https://bbport.de/')
         self.settle(root)
+        if not app.nav_scrolls:
+            # Font metrics differ on hosted Windows: force overflow instead of
+            # assuming a particular number of entries fits in 680 points.
+            self.resize(root, app, 1000, 520)
         hidden, cut = self.unseen(app)
         self.assertFalse(cut)
         box, listed = app.update_box, app.nav_list
@@ -260,7 +264,8 @@ class PageTextLiveTests(LiveLauncher, unittest.TestCase):
                     if not label.winfo_ismapped() or not str(label.cget('text')).strip():
                         continue
                     with self.subTest(lang=lang, page=name, text=str(label.cget('text'))[:50]):
-                        self.assertGreaterEqual(label.winfo_width(), label.winfo_reqwidth() - 2)  # squeezed
+                        self.assertGreaterEqual(label.winfo_width(), label.winfo_reqwidth() - 2,
+                            f'lang={lang}, page={name}, label={label.cget("text")!r}')  # squeezed
                         self.assertLessEqual(label.winfo_rootx() + label.winfo_reqwidth(), right + 2)
             self.doCleanups()
 

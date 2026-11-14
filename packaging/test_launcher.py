@@ -21,7 +21,7 @@ def main():
             return str(value).replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
         for test, trace in result.errors + result.failures:
             title = escape(test.id()).replace(':', '%3A').replace(',', '%2C')
-            print(f'::error title={title}::{escape(trace)}', flush=True)
+            print(f'::error title={title}::{escape(test.id() + chr(10) + trace)}', flush=True)
     return 0 if result.wasSuccessful() else 1
 
 
