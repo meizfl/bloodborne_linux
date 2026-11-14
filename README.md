@@ -1,4 +1,4 @@
-# Bloodborne for Windows
+# Bloodborne for Windows and Linux
 <a href="https://trendshift.io/repositories/306163?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-306163" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/306163/daily?language=C%2B%2B" alt="Supermedo%2Funcharted_pc | Trendshift" width="250" height="55"/></a>
 
 **Bloodborne running natively on Windows 10 and 11, by [Supermedo](https://github.com/Supermedo) Mohammed Albarghouthi.**
@@ -146,6 +146,13 @@ Crashes on AMD RDNA2 cards, slow FSR 4 and online errors are collected in
 [docs/WINDOWS_TROUBLESHOOTING.md](docs/WINDOWS_TROUBLESHOOTING.md).
 
 ## Building from source
+
+For native Linux (x86-64), see [packaging/LINUX.md](packaging/LINUX.md).
+Build with `bash build.sh --test`, then start with
+`BB_GAME_DIR=/path/to/game bash run.sh`, or use the shared Windows/Linux launcher:
+`python3 launcher/bloodborne_launcher.py`.
+See [launcher setup and packaging](packaging/LAUNCHER.md) for its dependencies,
+native packages and platform-specific features. The original GTK launcher remains available.
 
 See [packaging/windows/README.md](packaging/windows/README.md): MSYS2 CLANG64, `bash build.sh`,
 then `bash packaging/windows/package.sh`. DLSS is built separately with

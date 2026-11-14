@@ -1,7 +1,50 @@
 # Linux build
 
-The Linux version is the native `bb-probe` (ELF) with `run.sh` and the GTK4 launcher
-(`launcher/bbport_launcher.py`), packaged with Nix as an AppImage (Steam Deck and most desktops).
+The Linux version is the native `bb-probe` (ELF) with `run.sh` and the shared Tk launcher
+(`launcher/bloodborne_launcher.py`), packaged with Nix as an AppImage (Steam Deck and most desktops).
+See [LAUNCHER.md](LAUNCHER.md) for shared launcher packaging and validation.
+The older GTK launcher remains available with `gtkLauncher = true` in Nix.
+
+## Build and run from source
+
+Requires x86-64 Linux, GCC/G++ or Clang with C++23 support, CMake 3.24+, Ninja,
+pkg-config and Python 3. Install development packages for Vulkan, SDL3, FFmpeg,
+Boost, fmt, robin-map, xxhash, Vulkan Memory Allocator, Zydis, glslang, X11,
+Protobuf (including protoc), OpenSSL, zlib, nlohmann-json and miniupnpc.
+The remaining dependencies are Git submodules. With Nix, `shell.nix` supplies
+the build dependencies automatically.
+
+```sh
+git submodule update --init --recursive
+CMAKE_BUILD_PARALLEL_LEVEL=4 bash build.sh --test
+BB_GAME_DIR=/absolute/path/to/Bloodborne bash run.sh
+```
+
+The game folder must contain your decrypted `eboot.bin` and the game data.
+The loader executes the game's x86-64 code directly; ARM Linux is unsupported.
+For the graphical launcher, install Tkinter and Pillow,
+then run `python3 launcher/bloodborne_launcher.py`.
+The older GTK UI needs GTK4, libadwaita and Python GObject bindings; use
+`nix-shell launcher/shell.nix --run 'python3 launcher/bbport_launcher.py'` for it.
+Pillow is optional for trophy pictures. Source builds keep settings and saves in
+the checkout by default; `BB_DATA_DIR` selects a separate writable directory.
+`CC` and `CXX` select the C and C++ compilers, `BB_LTO=OFF` disables LTO, and
+`CMAKE_BUILD_PARALLEL_LEVEL` limits GPU compilation jobs.
+
+Offline Chalice Glyphs are built into the Linux loader. Its catalog is loaded
+from `data/local_chalice/catalog.bin`, also included in the Linux package.
+`BB_LOCAL_CHALICE_CATALOG` overrides the catalog path.
+Set `BB_WINDOW_MODE=borderless` for fullscreen at the desktop resolution, or
+`BB_WINDOW_MODE=fullscreen` for exclusive fullscreen.
+
+## Current checkout validation
+
+On Arch Linux with Clang 23, LTO disabled and an RX 5600 XT (RADV):
+the native ELF loader and GPU library build, `build.sh --test` passes, all 60
+Linux start/online tests and nine runtime Python tests pass, and a clean 1.09
+dump reaches the rendered title screen with PipeWire audio initialized.
+The offline glyph catalog loads with 2351 entries. Gameplay, online sessions
+and the AppImage package have not been validated in this checkout.
 
 On a Linux PC with Nix:
 

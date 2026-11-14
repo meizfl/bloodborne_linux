@@ -42,6 +42,19 @@ class StepCase(unittest.TestCase):
 
 
 class LayerTests(StepCase):
+    def test_online_routes_are_exported_for_the_native_game(self):
+        user = self.root / 'user'
+        args = mock.Mock(game=self.root, out=self.out, user=user, config=self.config)
+        with mock.patch.dict(os.environ, {'BB_ONLINE': '1', 'BB_COMMUNITY_SERVER': 'https://example.test'}), \
+                mock.patch.object(start, 'remove_stale_views'), mock.patch.object(start, 'game_groups', return_value=set()), \
+                mock.patch.object(start, 'port_layers', return_value=True), mock.patch.object(start, 'trophy_popup'), \
+                mock.patch.object(start, 'saves_steps'):
+            start.before_view(args, self.results)
+        import json
+        path = user / 'host_overrides.json'
+        self.assertEqual(json.loads(path.read_text())[run.GAME_SERVER], 'https://example.test')
+        self.assertIn(f'env SHADPS4_HTTP_HOST_OVERRIDES_JSON={path}', self.results.lines)
+
     def layers(self, fail=(), groups=('fps', 'resolution', 'effects'), version='01.09'):
         self.calls = []
 

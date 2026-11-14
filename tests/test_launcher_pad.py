@@ -4,6 +4,7 @@ from paths import ROOT
 import ctypes
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(ROOT / 'launcher'))
 import bbport_pad  # noqa: E402
@@ -74,7 +75,11 @@ class PadTests(unittest.TestCase):
         self.assertEqual(pads.sdl.closed, [1007])
 
     def test_the_ports_own_sdl(self):
-        self.assertIsNone(bbport_pad.sdl_path(ROOT / 'nowhere'))
+        with mock.patch.object(bbport_pad.sys, 'platform', 'win32'):
+            self.assertIsNone(bbport_pad.sdl_path(ROOT / 'nowhere'))
+        with mock.patch.object(bbport_pad.sys, 'platform', 'linux'), \
+                mock.patch.object(bbport_pad.ctypes.util, 'find_library', return_value='libSDL3.so.0'):
+            self.assertEqual(bbport_pad.sdl_path(ROOT / 'nowhere'), 'libSDL3.so.0')
 
 
 

@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / 'launcher'))
 import bbport_launcher_win as launcher  # noqa: E402
 
 
+@unittest.skipUnless(sys.platform == 'win32', 'native Windows API integration')
 class PlacedTests(unittest.TestCase):
     def test_a_place_on_a_monitor_is_taken(self):
         self.assertEqual(launcher.placed('40,30'), (40, 30, False))
@@ -36,6 +37,7 @@ class PlacedTests(unittest.TestCase):
             self.assertIsNone(launcher.placed(text), text)
 
 
+@unittest.skipUnless(sys.platform == 'win32', 'native Windows API integration')
 class WindowPlaceTests(unittest.TestCase):
     def setUp(self):
         self.root = tkinter.Tk()

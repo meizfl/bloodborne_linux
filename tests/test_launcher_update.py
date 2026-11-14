@@ -501,6 +501,7 @@ class LeftoverTests(unittest.TestCase):
         self.assertTrue(port.is_dir())
 
 
+@mock.patch.object(L, 'WINDOWS', True)
 class MainTests(unittest.TestCase):
     """main(): a start during an install deletes nothing and exits at once; the leftovers go only after
     one_launcher, and they and the installer's outcome go into the next game's log."""
@@ -556,6 +557,7 @@ class MainTests(unittest.TestCase):
         self.assertNotIn('BB_UPDATE_RESULT', os.environ)  # not passed on to the game
 
 
+@unittest.skipUnless(sys.platform == 'win32', 'native Windows API integration')
 class InstallerTests(unittest.TestCase):
     """--install-update: one installer at a time; the launcher it starts again, and what it tells the player and
     the log."""
@@ -672,6 +674,7 @@ def run_ui_calls(ui):
         ui.ui_calls.get_nowait()()
 
 
+@mock.patch.object(L, 'WINDOWS', True)
 class OneUpdateTests(unittest.TestCase):
     """The side box's Update and Other versions' Install: one update at a time, never during a game or a game test."""
 

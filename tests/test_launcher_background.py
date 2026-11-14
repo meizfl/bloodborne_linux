@@ -155,6 +155,7 @@ class ServerCheckTests(unittest.TestCase):
         self.assertTrue(all('not reachable' in line for line in lines), lines)
 
 
+@mock.patch.object(L, 'WINDOWS', True)
 class UpdateCheckTests(unittest.TestCase):
     def setUp(self):
         patcher = mock.patch.object(L, 'LANG', 'en')
@@ -185,6 +186,7 @@ class UpdateCheckTests(unittest.TestCase):
                 L.update_to_offer()
 
 
+@mock.patch.object(L, 'WINDOWS', True)
 class DownloadTests(unittest.TestCase):
     def setUp(self):
         patcher = mock.patch.object(L, 'LANG', 'en')
@@ -228,6 +230,7 @@ class DownloadTests(unittest.TestCase):
                          'Download failed: Vulkan (fsr4vk): files missing or need updating.')
 
 
+@mock.patch.object(L, 'WINDOWS', True)
 class InstallVersionTests(unittest.TestCase):
     """Advanced > Other versions and the update offer: a download that breaks gives the buttons back."""
 
@@ -265,6 +268,7 @@ class InstallVersionTests(unittest.TestCase):
         self.progress.assert_called()
 
 
+@mock.patch.object(L, 'WINDOWS', True)
 class OtherVersionsTests(unittest.TestCase):
     def test_the_list_always_answers(self):
         """"Loading the list of versions…" stayed for good after a broken reply."""
@@ -284,6 +288,7 @@ class OtherVersionsTests(unittest.TestCase):
         self.assertIn('Could not load the list of versions: BadStatusLine', texts(app.version_window))
 
 
+@mock.patch.object(L, 'WINDOWS', True)
 class HardwareCheckTests(unittest.TestCase):
     def test_a_check_that_stops_still_ends(self):
         """detect_gpu: "Checking the graphics card…" and "checking support…" stayed when it stopped."""
@@ -495,6 +500,7 @@ class ShaderCacheTests(unittest.TestCase):
         self.assertIn('Part of the shader cache could not be deleted', self.app.messagebox.showerror.call_args.args[1])
 
 
+@mock.patch.object(L, 'WINDOWS', True)
 class SteamTests(unittest.TestCase):
     """Add to Steam: the wait for Steam to close (up to half a minute) runs off the Tk thread."""
 

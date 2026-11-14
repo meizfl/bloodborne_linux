@@ -222,6 +222,13 @@ def remove_stale_views(out, game, running=game_running):
 
 def before_view(args, results):
     game, out = Path(args.game), Path(args.out)
+    if os.environ.get('BB_ONLINE') == '1':
+        def routes():
+            user = Path(args.user)
+            user.mkdir(parents=True, exist_ok=True)
+            run.online_overrides(os.environ, user)
+            results.env('SHADPS4_HTTP_HOST_OVERRIDES_JSON', os.environ['SHADPS4_HTTP_HOST_OVERRIDES_JSON'])
+        attempt('Online routes', routes)
     attempt('Game views', remove_stale_views, out, game)
     groups = attempt('Game files', game_groups, game)
     if groups is None:

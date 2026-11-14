@@ -5,6 +5,8 @@ The port's own SDL3 (bin/SDL3.dll) reads them: the same drivers and the same but
 game (gpu/shim/window.cpp, src/runtime_pad.c). Only the gamepad part of SDL is started, no window;
 the launcher reads while the Controls page is shown and stops when it is left or the game starts."""
 import ctypes
+import ctypes.util
+import sys
 from pathlib import Path
 
 import bbport_theme as theme
@@ -100,6 +102,8 @@ class Pads:
 
 def sdl_path(port_dir):
     """The port's SDL3.dll (bin/, or out/ in a build), None without one."""
+    if sys.platform != 'win32':
+        return ctypes.util.find_library('SDL3')
     for folder in ('bin', 'out'):
         path = Path(port_dir) / folder / 'SDL3.dll'
         if path.is_file():

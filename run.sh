@@ -19,6 +19,8 @@ data=${BB_DATA_DIR:-.}
 out=$data/out
 mkdir -p "$out"
 export BB_CONFIG=${BB_CONFIG:-$data/bbport.ini}
+# Source builds and packages carry the same offline glyph catalog.
+export BB_LOCAL_CHALICE_CATALOG=${BB_LOCAL_CHALICE_CATALOG:-$PWD/data/local_chalice/catalog.bin}
 # FSR 4.1.1 assets (tools/fsr4cap/build_assets.sh): next to run.sh or in the data directory.
 if [[ -z ${BB_FSR411_DIR:-} && ! -d fsr4_411 && -d $data/fsr4_411 ]]; then
     export BB_FSR411_DIR=$data/fsr4_411

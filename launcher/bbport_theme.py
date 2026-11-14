@@ -66,6 +66,16 @@ def load_fonts(root):
     BODY_MEDIUM = pick('Inter Medium', 'Inter', 'Segoe UI')
     BODY_SEMI = pick('Inter SemiBold', 'Inter', 'Segoe UI Semibold')
     ICONS = pick('Segoe Fluent Icons', 'Segoe MDL2 Assets')
+    if sys.platform != 'win32':
+        HEAD = pick('Cinzel SemiBold', 'DejaVu Serif', 'serif')
+        HEAD_BOLD = pick('Cinzel Bold', 'DejaVu Serif', 'serif')
+        BODY = BODY_MEDIUM = BODY_SEMI = pick('Inter', 'DejaVu Sans', 'sans-serif')
+        ICONS = BODY
+        # Standard Unicode rather than Windows-only Segoe private-use glyphs.
+        ICON.update(play='▶', graphics='▧', display='▣', game='▱', cheats='⚑', online='◎', mods='▦',
+                    trophies='★', controls='⌨', advanced='⚙', log='≡', ok='✓', warn='⚠', error='×', info='ⓘ',
+                    keyboard='⌨', link='↗', system='▤', folder='▱', cpu='▤', ram='▥', pulse='∿', help='?',
+                    picture='▣', saves='▣', language='文', seamless='◎', gameplay='⚑')
 
 
 # ---- drawing --------------------------------------------------------------------------------

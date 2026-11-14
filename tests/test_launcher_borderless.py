@@ -39,6 +39,7 @@ class FakeWindow:
         return True
 
 
+@unittest.skipUnless(sys.platform == 'win32', 'native Windows API integration')
 class BorderlessTests(unittest.TestCase):
     def setUp(self):
         self.window = w = FakeWindow()

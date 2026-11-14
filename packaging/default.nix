@@ -2,6 +2,7 @@
 # launcher, with their whole Nix closure and Mesa's Vulkan drivers. `bash packaging/appimage.sh`
 # turns it into an AppImage (Steam Deck); `nix-build packaging` alone gives result/bin/bbport.
 { pkgs ? import <nixpkgs> { }
+, gtkLauncher ? false
   # Store paths the prebuilt binaries load libraries from (their RUNPATHs), written by
   # appimage.sh. Nix only finds references to its inputs, and the binaries were built outside.
 , runtimePaths ? (if builtins.pathExists ./runtime-paths.nix then import ./runtime-paths.nix else [ ])
@@ -12,7 +13,7 @@ let
   # FSR 4.1.1 models are extracted from AMD's DLLs: never in a public package. BB_PACKAGE_FSR411=1
   # (appimage.sh runs nix with --impure) bundles the local fsr4_411 for one's own devices.
   fsr411 = builtins.getEnv "BB_PACKAGE_FSR411" == "1";
-  assetDirs = [ "scripts" "patches" "fsr4_shaders" "launcher" ] ++ lib.optional fsr411 "fsr4_411";
+  assetDirs = [ "scripts" "patches" "fsr4_shaders" "launcher" "data" ] ++ lib.optional fsr411 "fsr4_411";
   # Only what the package needs (the tree also holds builds, profiles and captures).
   wanted = [
     "run.sh" "run.py" "out" "out/bb-probe" "out/bb-gpu-capabilities" "out/gpu" "out/gpu/libbbgpu.so"
@@ -25,7 +26,8 @@ let
       in builtins.elem rel wanted
         || lib.any (dir: lib.hasPrefix (dir + "/") rel) assetDirs;
   };
-  python = pkgs.python3.withPackages (ps: [ ps.pygobject3 ]);
+  python = pkgs.python3.withPackages (ps: if gtkLauncher then [ ps.pygobject3 ] else [ ps.tkinter ps.pillow ]);
+  launcherEntry = if gtkLauncher then "bbport_launcher.py" else "bloodborne_launcher.py";
   # run.sh's scripts: Pillow turns the game's trophy pictures into the pop-up's (run.py write_trophy_icons).
   startPython = pkgs.python3.withPackages (ps: [ ps.pillow ]);
   # Mesa comes with the package. bbport_vulkan.py adds the host NVIDIA ICD and
@@ -82,7 +84,7 @@ pkgs.stdenv.mkDerivation {
     d=$out/share/bbport
     mkdir -p $d/bin $out/bin
     cp run.sh run.py $d/ # scripts/linux_start.py uses run.py's start steps
-    cp -r scripts patches fsr4_shaders launcher $d/
+    cp -r scripts patches fsr4_shaders launcher data $d/
     # FSR 4.1.1 models only with BB_PACKAGE_FSR411=1 (see above); otherwise run.sh finds them in
     # the data directory (~/.local/share/bbport/fsr4_411).
     if [ -d fsr4_411 ]; then
@@ -112,7 +114,7 @@ pkgs.stdenv.mkDerivation {
       ${./bbport-entry.c} -o $out/bin/bbport
     makeShellWrapper ${python}/bin/python3 $out/libexec/bbport \
       "''${gappsWrapperArgs[@]}" \
-      ${common}      --add-flags "$out/share/bbport/launcher/bbport_vulkan.py ${python}/bin/python3 $out/share/bbport/launcher/bbport_launcher.py" \
+      ${common}      --add-flags "$out/share/bbport/launcher/bbport_vulkan.py ${python}/bin/python3 $out/share/bbport/launcher/${launcherEntry}" \
       --set BB_PREBUILT 1 \
       --set PYTHON ${startPython}/bin/python3 \
       --set BB_BUNDLED_VK_DRIVER_FILES ${icds} \

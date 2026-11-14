@@ -14,6 +14,7 @@ Texts are English; `tr` translates a template before it is formatted.
 """
 import ctypes
 import re
+import sys
 
 # (vendor, group, name, video memory in GB, score, flags); flags: laptop, igpu, no-vulkan13.
 GPUS = [
@@ -308,6 +309,9 @@ def cpu_from_name(name):
 
 # ---- detection on this PC ----------------------------------------------------------------------
 def processor_name():
+    if sys.platform != 'win32':
+        from bbport_platform import cpu_name
+        return cpu_name()
     try:
         import winreg
         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r'HARDWARE\DESCRIPTION\System\CentralProcessor\0') as key:
@@ -318,6 +322,9 @@ def processor_name():
 
 def processor_support():
     """ok / compat / none from CPUID (AVX, then the instructions the port translates), or None."""
+    if sys.platform != 'win32':
+        found = instructions()
+        return None if found is None else 'none' if not found['AVX'] else 'ok' if all(found.values()) else 'compat'
     try:
         import cpu_compat
         found = cpu_compat._cpuid_windows()
@@ -343,6 +350,15 @@ INSTRUCTIONS = ('AVX', 'BMI1', 'MOVBE', 'LZCNT')  # HARD_LIMITS: AVX or nothing;
 def instructions(cpuid=None):
     """{name: True/False} for INSTRUCTIONS on this CPU, from CPUID as cpu_compat reads it (`cpuid` for
     tests); None when CPUID cannot be read here."""
+    if cpuid is None and sys.platform != 'win32':
+        from pathlib import Path
+        try:
+            flags = next(line.split(':', 1)[1].split() for line in Path('/proc/cpuinfo').read_text().splitlines()
+                         if line.startswith('flags'))
+            return {name: flag in flags for name, flag in
+                    (('AVX', 'avx'), ('BMI1', 'bmi1'), ('MOVBE', 'movbe'), ('LZCNT', 'abm'))}
+        except (OSError, StopIteration):
+            return None
     cleanup = None
     try:
         import cpu_compat
@@ -390,6 +406,9 @@ def detect_cpu():
 
 def memory_gb():
     """Installed memory in GB (what is on the sticks, not what Windows has left)."""
+    if sys.platform != 'win32':
+        from bbport_platform import memory_gb as native_memory
+        return native_memory()
     try:
         kb = ctypes.c_ulonglong()
         if ctypes.windll.kernel32.GetPhysicallyInstalledSystemMemory(ctypes.byref(kb)):

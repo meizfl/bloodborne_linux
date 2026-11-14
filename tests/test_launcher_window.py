@@ -35,6 +35,7 @@ class WindowTests(unittest.TestCase):
         self.assertIs(L.APP_DEFAULTS['windows_title_bar'], False)
         self.assertIn("'windows_title_bar', 'app'", SOURCE)  # the way back, in Advanced
 
+    @unittest.skipUnless(sys.platform == 'win32', 'native Windows frame hit-testing')
     def test_where_windows_finds_the_caption(self):
         import bbport_frame
 

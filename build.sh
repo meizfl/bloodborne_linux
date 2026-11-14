@@ -49,6 +49,8 @@ if ! { command -v pkg-config >/dev/null && pkg-config --exists vulkan sdl3 && co
     fi
     echo 'Need pkg-config with vulkan and sdl3, cmake and ninja (see shell.nix).' >&2; exit 1
 fi
+CXX=${CXX:-c++}
+command -v "$CXX" >/dev/null || { echo 'Install a C++ compiler or set CXX.' >&2; exit 1; }
 read -r -a includes <<< "$(pkg-config --cflags vulkan sdl3)"
 read -r -a libraries <<< "$(pkg-config --libs vulkan sdl3)"
 # GPU library (shadPS4 video core + drivers), built by CMake into out/gpu/libbbgpu.so.
@@ -61,7 +63,8 @@ fi
 mkdir -p pgo
 # Submodules (git clone --recursive, or: git submodule update --init) and this port's changes
 # to FSR-Vulkan (gpu/patches/fsr-vulkan), applied to its working tree once.
-if [[ ! -f gpu/third_party/fsr-vulkan/CMakeLists.txt || ! -f gpu/third_party/imgui/imgui.h ]]; then
+if [[ ! -f gpu/third_party/fsr-vulkan/CMakeLists.txt || ! -f gpu/third_party/imgui/imgui.h ||
+      ! -f gpu/third_party/xbyak/xbyak/xbyak.h || ! -f third_party/LibAtrac9/C/src/libatrac9.h ]]; then
     git submodule update --init --recursive
 fi
 for patch in gpu/patches/fsr-vulkan/*.patch; do
@@ -73,7 +76,7 @@ cmake -S gpu -B out/gpu -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBB_PGO="$pg
     -DBB_LTO="${BB_LTO:-ON}" -DBB_PGO_DIR="$PWD/pgo" >/dev/null
 echo "GPU library: PGO $pgo, LTO ${BB_LTO:-ON}"
 # A failed GPU build must stop here: an older libbbgpu.so would otherwise be used silently.
-if ! ninja -C out/gpu bbgpu > out/gpu-build.log 2>&1; then
+if ! cmake --build out/gpu --target bbgpu > out/gpu-build.log 2>&1; then
     grep -v '^\[' out/gpu-build.log | tail -40 >&2
     echo 'GPU library build failed (full log: out/gpu-build.log)' >&2; exit 1
 fi
@@ -87,11 +90,20 @@ if [[ ! -f out/libatrac9.a || -n $(find third_party/LibAtrac9/C/src -newer out/l
     for source in "${atrac9[@]}"; do "$CC" -std=c99 -O2 -g -w -c "$source" -o "out/atrac9/$(basename "${source%.c}").o"; done
     ar rcs out/libatrac9.a out/atrac9/*.o
 fi
-"$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -pthread -no-pie "${includes[@]}" -I. -Isrc src/probe.c "${runtime[@]}" src/vulkan_smoke.c out/libatrac9.a -lm "${gpu[@]}" "${libraries[@]}" -o out/bb-probe
+# The offline glyph implementation uses C++; keep the loader and runtime compiled as C.
+chalice=()
+for source in src/local_chalice.cpp src/lc_desc.cpp src/lc_platform.cpp src/offline_slot.cpp; do
+    object="out/$(basename "${source%.cpp}").o"
+    "$CXX" -std=c++23 -O2 -g -pthread -Isrc -c "$source" -o "$object"
+    chalice+=("$object")
+done
+"$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -pthread -no-pie "${includes[@]}" -I. -Isrc src/probe.c "${runtime[@]}" src/vulkan_smoke.c "${chalice[@]}" out/libatrac9.a -lstdc++ -ldl -lm "${gpu[@]}" "${libraries[@]}" -o out/bb-probe
 echo "Built $PWD/out/bb-probe"
 # GPU check for run.sh (live_resolution=auto): links only the Vulkan loader.
 "$CC" -std=c11 -O2 -Wall -Wextra -Werror tools/gpu_capabilities.c "${libraries[@]}" -o out/bb-gpu-capabilities
 if [[ ${1:-} == --test ]]; then
+    "$CXX" -std=c++23 -O2 -g -Wall -Wextra -Werror -Isrc tests/test_lc_platform.cpp src/lc_platform.cpp -ldl -o out/lc-platform-test
+    out/lc-platform-test
     "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -pthread "${includes[@]}" -I. -Isrc tests/test_pad.c src/runtime_input_config.c -lm "${libraries[@]}" -o out/pad-test
     out/pad-test
     "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -pthread "${includes[@]}" -I. -Isrc tests/test_pad_triggers.c src/runtime_input_config.c -lm "${libraries[@]}" -o out/pad-triggers-test

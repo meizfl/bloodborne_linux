@@ -278,6 +278,7 @@ target_compile_definitions(bbgpu PRIVATE IMGUI_IMPL_VULKAN_NO_PROTOTYPES
 set_source_files_properties(shim/bbport_overlay.cpp PROPERTIES
     OBJECT_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/fonts/DejaVuSans.ttf)
 target_include_directories(bbgpu PRIVATE shim shadps4 ${SHADER_INCLUDE} third_party/gcn/include third_party/half/include)
+target_include_directories(bbgpu PRIVATE third_party/xbyak)
 target_compile_definitions(bbgpu PRIVATE BOOST_ASIO_STANDALONE NDEBUG)
 target_compile_options(bbgpu PRIVATE -Wno-deprecated-declarations -Wno-missing-field-initializers)
 # Runtime symbols (runtime_memory_*, runtime_process_*) resolve against bb-probe.
@@ -307,10 +308,11 @@ if (WIN32)
     set_source_files_properties(fsr411_dx12/fsr411_support.cpp PROPERTIES COMPILE_DEFINITIONS _WINDOWS)
     target_include_directories(bbgpu PRIVATE fsr411_dx12 fsr411_dx12/sdk/api/include fsr411_dx12/sdk/upscalers/include)
     target_compile_options(bbgpu PRIVATE -include ${CMAKE_CURRENT_SOURCE_DIR}/shim/bb_win_compat.h)
-    target_include_directories(bbgpu PRIVATE third_party/xbyak)
     target_link_libraries(bbgpu PUBLIC Vulkan::Vulkan ws2_32 bcrypt ntdll synchronization winmm d3d12 dxgi dxguid)
 else()
     target_link_libraries(bbgpu PUBLIC PkgConfig::X11)
+    # Portable builds can put non-system dependencies beside libbbgpu.so.
+    set_target_properties(bbgpu PROPERTIES BUILD_RPATH "$ORIGIN" INSTALL_RPATH "$ORIGIN")
 endif()
 
 # bbport (Windows): bbgpu is a static library there, so the loader and the HLE runtime are

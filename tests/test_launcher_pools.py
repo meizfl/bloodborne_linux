@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 import bbport_launcher_win as L  # noqa: E402
 
 
+@mock.patch.object(L, 'WINDOWS', True)
 class PoolTests(unittest.TestCase):
     """The co-op pools: SuperMedo Server first and by default, a shadNet server of the player's choice."""
 

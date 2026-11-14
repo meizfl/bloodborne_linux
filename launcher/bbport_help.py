@@ -520,6 +520,8 @@ VC_REDIST = 'https://aka.ms/vs/17/release/vc_redist.x64.exe'  # Microsoft's own 
 
 def missing_runtime(port_dir, system=None):
     """The VC_RUNTIME files that are neither in Windows' System32 nor beside the game's program (bin)."""
+    if os.name != 'nt' and system is None:
+        return []
     system = Path(system or Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32')
     return [name for name in VC_RUNTIME
             if not (system / name).is_file() and not (Path(port_dir or '.') / 'bin' / name).is_file()]
