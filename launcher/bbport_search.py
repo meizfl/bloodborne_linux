@@ -15,6 +15,7 @@ they mean are left out (STOP_WORDS), and when no entry has every word, the entri
 them are shown instead of nothing.
 """
 import re
+import sys
 import unicodedata
 
 import bbport_theme as theme
@@ -440,7 +441,7 @@ class SearchMixin:
         box.pack(fill='x', padx=px(14), pady=(0, px(10)))
         inner = tk.Frame(box, bg=theme.DEEP)
         inner.pack(fill='x')
-        tk.Label(inner, text='', bg=theme.DEEP, fg=theme.MUTED, font=(theme.ICONS, 10)).pack(
+        tk.Label(inner, text=('' if sys.platform == 'win32' else theme.ICON['search']), bg=theme.DEEP, fg=theme.MUTED, font=(theme.ICONS, 10)).pack(
             side='left', padx=(px(9), px(4)))
         self.search_var = tk.StringVar()
         entry = tk.Entry(inner, textvariable=self.search_var, bg=theme.DEEP, fg=theme.TEXT_STRONG, relief='flat', bd=0,

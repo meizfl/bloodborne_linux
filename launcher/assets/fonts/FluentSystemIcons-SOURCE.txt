@@ -1,0 +1,5 @@
+Fluent System Icons Regular, Microsoft (MIT).
+Source: https://github.com/microsoft/fluentui-system-icons/tree/main/fonts
+Downloaded: 2026-11-14
+Glyph names/codepoints: FluentSystemIcons-Regular.json from the same directory.
+Used on Linux because Segoe MDL2 Assets is a Windows system font.

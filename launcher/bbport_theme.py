@@ -40,6 +40,9 @@ ICON = {'play': '', 'graphics': '', 'display': '', 'game': '', 'chea
         'folder': '', 'cpu': '', 'ram': '', 'pulse': '', 'help': '', 'picture': '', 'saves': '',
         'language': '', 'seamless': '', 'gameplay': ''}
 
+# Fluent System Icons (MIT), bundled for hosts without Segoe.
+PORTABLE_ICON = {'play': '\uf605', 'graphics': '\uf2f5', 'display': '\uf359', 'game': '\uf418', 'cheats': '\ue618', 'online': '\uf45a', 'mods': '\ue9e9', 'trophies': '\uf70f', 'controls': '\uf4b8', 'advanced': '\uf6a9', 'log': '\uf378', 'ok': '\uf294', 'warn': '\uf869', 'error': '\uf369', 'info': '\uf4a3', 'keyboard': '\uf4b8', 'link': '\uee86', 'system': '\uf4c7', 'folder': '\uf418', 'cpu': '\ue4ac', 'ram': '\ue156', 'pulse': '\ue9dc', 'help': '\uf638', 'picture': '\uf488', 'saves': '\uf67f', 'language': '\uf4f3', 'seamless': '\uf5a8', 'gameplay': '\ue68a', 'chat': '\uf286', 'search': '\uf68f', 'up': '\uf2b6', 'down': '\uf2a3', 'grip': '\ue9f8'}
+
 SS = 4  # supersampling of the drawn images
 
 
@@ -53,11 +56,21 @@ def load_fonts(root):
     """Registers the bundled fonts for this process only and picks the families Tk sees."""
     global HEAD, HEAD_BOLD, BODY, BODY_MEDIUM, BODY_SEMI, ICONS
     import tkinter.font as tkfont
-    for path in sorted((ASSETS / 'fonts').glob('*.ttf')):
-        try:
+    paths = sorted((ASSETS / 'fonts').glob('*.ttf'))
+    if sys.platform == 'win32':
+        for path in paths:
             ctypes.windll.gdi32.AddFontResourceExW(str(path), 0x10, 0)  # FR_PRIVATE
-        except (AttributeError, OSError):
-            pass
+    elif sys.platform.startswith('linux'):
+        # Tk/Xft uses Fontconfig. Register before Tk first resolves our font families.
+        import ctypes.util
+        fc = ctypes.CDLL(ctypes.util.find_library('fontconfig') or 'libfontconfig.so.1')
+        fc.FcConfigGetCurrent.restype = ctypes.c_void_p
+        fc.FcConfigAppFontAddFile.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+        fc.FcConfigAppFontAddFile.restype = ctypes.c_int
+        config = fc.FcConfigGetCurrent()
+        for path in paths:
+            if not fc.FcConfigAppFontAddFile(config, str(path).encode()):
+                raise RuntimeError(f'Cannot register bundled font: {path}')
     families = set(tkfont.families(root))
     pick = lambda *names: next((n for n in names if n in families), names[-1])
     HEAD = pick('Cinzel SemiBold', 'Georgia')
@@ -69,13 +82,12 @@ def load_fonts(root):
     if sys.platform != 'win32':
         HEAD = pick('Cinzel SemiBold', 'DejaVu Serif', 'serif')
         HEAD_BOLD = pick('Cinzel Bold', 'DejaVu Serif', 'serif')
-        BODY = BODY_MEDIUM = BODY_SEMI = pick('Inter', 'DejaVu Sans', 'sans-serif')
-        ICONS = BODY
-        # Standard Unicode rather than Windows-only Segoe private-use glyphs.
-        ICON.update(play='▶', graphics='▧', display='▣', game='▱', cheats='⚑', online='◎', mods='▦',
-                    trophies='★', controls='⌨', advanced='⚙', log='≡', ok='✓', warn='⚠', error='×', info='ⓘ',
-                    keyboard='⌨', link='↗', system='▤', folder='▱', cpu='▤', ram='▥', pulse='∿', help='?',
-                    picture='▣', saves='▣', language='文', seamless='◎', gameplay='⚑')
+        BODY = pick('Inter', 'DejaVu Sans', 'sans-serif')
+        BODY_MEDIUM = pick('Inter Medium', BODY)
+        BODY_SEMI = pick('Inter SemiBold', BODY)
+        ICONS = pick('FluentSystemIcons-Regular', 'FluentSystemIcons Regular')
+        ICON.update(PORTABLE_ICON)
+
 
 
 # ---- drawing --------------------------------------------------------------------------------

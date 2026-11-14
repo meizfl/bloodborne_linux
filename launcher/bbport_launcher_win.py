@@ -2226,7 +2226,7 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
         # chevron (a link's colour: a click moves the list) in the gutter right of the entries, where it covers no
         # pill. A small grey caret alone went unseen.
         self.nav_arrows, self.nav_edges = [], []
-        for glyph, step in (('', -80), ('', 80)):  # ChevronUpMed, ChevronDownMed
+        for glyph, step in ((('' if WINDOWS else theme.ICON['up']), -80), (('' if WINDOWS else theme.ICON['down']), 80)):  # ChevronUpMed, ChevronDownMed
             arrow = tk.Label(self.nav_list, text=glyph, bg=BG, fg=GOLD, font=(theme.ICONS, 8), bd=0, padx=0,
                              pady=px(3), cursor='hand2')
             arrow.bind('<Button-1>', lambda _e, step=step: self.nav_scroll(px(step)))
@@ -2267,9 +2267,9 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
         site = COMMUNITY_SITE.split('//')[1].strip('/')
         self.community_buttons = []
         for icon, text, url, fill, hover, outline, colour in (
-                ('\ue8f2', _('Join our Discord'), bbport_help.DISCORD, DISCORD_BLURPLE, DISCORD_BLURPLE_HOVER,
+                (('\ue8f2' if WINDOWS else theme.ICON['chat']), _('Join our Discord'), bbport_help.DISCORD, DISCORD_BLURPLE, DISCORD_BLURPLE_HOVER,
                  None, '#ffffff'),
-                ('\ue774', site, COMMUNITY_SITE, CARD, theme.SURFACE, LINE, TEXT)):
+                (theme.ICON['online'], site, COMMUNITY_SITE, CARD, theme.SURFACE, LINE, TEXT)):
             pills = (self.theme.box(224, 36, 8, fill, outline, bg=BG), self.theme.box(224, 36, 8, hover, outline, bg=BG))
             c = tk.Canvas(side, width=px(224), height=px(36), bg=BG, highlightthickness=0, bd=0, cursor='hand2')
             c.create_image(0, 0, anchor='nw', image=pills[0], tags='pill')
@@ -5753,7 +5753,7 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
         tk, ttk, px = self.tk, self.ttk, self.px
         row = tk.Frame(self.mods_frame, bg=CARD, highlightthickness=1, highlightbackground=LINE)
         row.pack(fill='x', pady=(0, px(4)))
-        grip = tk.Label(row, text='\ue76f', bg=CARD, fg=MUTED, font=(theme.ICONS, 11), cursor='fleur')
+        grip = tk.Label(row, text=('\ue76f' if WINDOWS else theme.ICON['grip']), bg=CARD, fg=MUTED, font=(theme.ICONS, 11), cursor='fleur')
         grip.pack(side='left', padx=(px(10), px(6)), pady=px(8))
         tk.Label(row, text=f'{index + 1}.', bg=CARD, fg=MUTED, font=(theme.BODY, 10), width=3, anchor='e').pack(
             side='left')
