@@ -1,0 +1,27 @@
+[package]
+name = "bloodborne-launcher"
+version = "1.9.8"
+edition = "2021"
+rust-version = "1.85"
+license = "GPL-2.0-or-later"
+publish = false
+
+[dependencies]
+libloading = "=0.8.9"
+serde_json = "=1.0.151"
+sha2 = "=0.10.9"
+sha1 = "=0.10.6"
+base64 = "=0.22.1"
+quick-xml = "=0.41.0"
+zip = { version = "=2.6.1", default-features = false, features = ["deflate-flate2", "flate2"] }
+chrono = { version = "=0.4.45", default-features = false, features = ["clock"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"
+
+[dependencies.flate2]
+version = "=1.1.11"
+default-features = false
+features = ["rust_backend"]

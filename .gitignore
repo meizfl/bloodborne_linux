@@ -39,3 +39,5 @@ benchmarks/
 /Game/
 /game_runtime/
 .venv/
+
+/launcher-rs/target/
