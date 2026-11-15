@@ -41,3 +41,5 @@ benchmarks/
 .venv/
 
 /launcher-rs/target/
+
+!launcher-rs/resources/ui/*/images/*.png
