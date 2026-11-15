@@ -5,7 +5,7 @@ Missing or empty entries fall back to English."""
 
 KEYS = [
     'Play', 'Graphics', 'Display & FPS', 'Game & effects', 'Mods & patches', 'Advanced', 'Log',
-    'PLAY', 'Stop', 'native port · Windows', "In the game: Insert or L3+R3\nopens the port's menu.",
+    'PLAY', 'Stop', 'native port · {}', "In the game: Insert or L3+R3\nopens the port's menu.",
     'Ready check', 'Quick settings', 'Frame rate', 'Upscaler', 'Preset', 'Output', 'Fullscreen',
     '{} · game version {}', 'Game folder not set', 'Choose your game folder (Game & effects)',
     '✓ Game version {}: every patch available',
@@ -116,7 +116,7 @@ KEYS = [
 TRANSLATIONS = {
     'ar': [
         'العب', 'الرسومات', 'الشاشة ومعدل الإطارات', 'اللعبة والمؤثرات', 'التعديلات والرقع', 'متقدم', 'السجل',
-        'العب', 'إيقاف', 'منفذ أصلي · ويندوز', 'داخل اللعبة: Insert أو L3+R3\nيفتح قائمة المنفذ.',
+        'العب', 'إيقاف', 'منفذ أصلي · {}', 'داخل اللعبة: Insert أو L3+R3\nيفتح قائمة المنفذ.',
         'فحص الجاهزية', 'إعدادات سريعة', 'معدل الإطارات', 'أداة التكبير', 'الإعداد المسبق', 'الدقة', 'ملء الشاشة',
         '{} · إصدار اللعبة {}', 'لم يتم اختيار مجلد اللعبة', 'اختر مجلد اللعبة (اللعبة والمؤثرات)',
         '✓ إصدار اللعبة {}: كل الرقع متاحة',
@@ -217,7 +217,7 @@ TRANSLATIONS = {
     ],
     'es': [
         'Jugar', 'Gráficos', 'Pantalla y FPS', 'Juego y efectos', 'Mods y parches', 'Avanzado', 'Registro',
-        'JUGAR', 'Detener', 'port nativo · Windows', 'En el juego: Insert o L3+R3\nabre el menú del port.',
+        'JUGAR', 'Detener', 'port nativo · {}', 'En el juego: Insert o L3+R3\nabre el menú del port.',
         'Comprobación', 'Ajustes rápidos', 'Velocidad de fotogramas', 'Escalador', 'Preajuste', 'Salida', 'Pantalla completa',
         '{} · versión del juego {}', 'Carpeta del juego sin elegir', 'Elige la carpeta del juego (Juego y efectos)',
         '✓ Versión del juego {}: todos los parches disponibles',
@@ -318,7 +318,7 @@ TRANSLATIONS = {
     ],
     'pt': [
         'Jogar', 'Gráficos', 'Tela e FPS', 'Jogo e efeitos', 'Mods e patches', 'Avançado', 'Registro',
-        'JOGAR', 'Parar', 'port nativo · Windows', 'No jogo: Insert ou L3+R3\nabre o menu do port.',
+        'JOGAR', 'Parar', 'port nativo · {}', 'No jogo: Insert ou L3+R3\nabre o menu do port.',
         'Verificação', 'Ajustes rápidos', 'Taxa de quadros', 'Upscaler', 'Predefinição', 'Saída', 'Tela cheia',
         '{} · versão do jogo {}', 'Pasta do jogo não definida', 'Escolha a pasta do jogo (Jogo e efeitos)',
         '✓ Versão do jogo {}: todos os patches disponíveis',
@@ -419,7 +419,7 @@ TRANSLATIONS = {
     ],
     'fr': [
         'Jouer', 'Graphismes', 'Affichage et FPS', 'Jeu et effets', 'Mods et patchs', 'Avancé', 'Journal',
-        'JOUER', 'Arrêter', 'portage natif · Windows', 'En jeu : Insert ou L3+R3\nouvre le menu du portage.',
+        'JOUER', 'Arrêter', 'portage natif · {}', 'En jeu : Insert ou L3+R3\nouvre le menu du portage.',
         'Vérification', 'Réglages rapides', 'Fréquence d’images', 'Upscaler', 'Préréglage', 'Sortie', 'Plein écran',
         '{} · version du jeu {}', 'Dossier du jeu non défini', 'Choisissez le dossier du jeu (Jeu et effets)',
         '✓ Version du jeu {} : tous les patchs disponibles',
@@ -520,7 +520,7 @@ TRANSLATIONS = {
     ],
     'de': [
         'Spielen', 'Grafik', 'Anzeige & FPS', 'Spiel & Effekte', 'Mods & Patches', 'Erweitert', 'Protokoll',
-        'SPIELEN', 'Beenden', 'nativer Port · Windows', 'Im Spiel: Einfg oder L3+R3\nöffnet das Port-Menü.',
+        'SPIELEN', 'Beenden', 'nativer Port · {}', 'Im Spiel: Einfg oder L3+R3\nöffnet das Port-Menü.',
         'Bereitschaft', 'Schnelleinstellungen', 'Bildrate', 'Upscaler', 'Voreinstellung', 'Ausgabe', 'Vollbild',
         '{} · Spielversion {}', 'Spielordner nicht gewählt', 'Spielordner wählen (Spiel & Effekte)',
         '✓ Spielversion {}: alle Patches verfügbar',
@@ -621,7 +621,7 @@ TRANSLATIONS = {
     ],
     'it': [
         'Gioca', 'Grafica', 'Schermo e FPS', 'Gioco ed effetti', 'Mod e patch', 'Avanzate', 'Registro',
-        'GIOCA', 'Ferma', 'port nativo · Windows', 'Nel gioco: Ins o L3+R3\napre il menu del port.',
+        'GIOCA', 'Ferma', 'port nativo · {}', 'Nel gioco: Ins o L3+R3\napre il menu del port.',
         'Verifica', 'Impostazioni rapide', 'Frequenza fotogrammi', 'Upscaler', 'Preset', 'Uscita', 'Schermo intero',
         '{} · versione del gioco {}', 'Cartella del gioco non impostata', 'Scegli la cartella del gioco (Gioco ed effetti)',
         '✓ Versione del gioco {}: tutte le patch disponibili',
@@ -722,7 +722,7 @@ TRANSLATIONS = {
     ],
     'pl': [
         'Graj', 'Grafika', 'Ekran i FPS', 'Gra i efekty', 'Mody i łatki', 'Zaawansowane', 'Dziennik',
-        'GRAJ', 'Zatrzymaj', 'natywny port · Windows', 'W grze: Insert lub L3+R3\notwiera menu portu.',
+        'GRAJ', 'Zatrzymaj', 'natywny port · {}', 'W grze: Insert lub L3+R3\notwiera menu portu.',
         'Sprawdzenie', 'Szybkie ustawienia', 'Liczba klatek', 'Upscaler', 'Profil', 'Wyjście', 'Pełny ekran',
         '{} · wersja gry {}', 'Nie wybrano folderu gry', 'Wybierz folder gry (Gra i efekty)',
         '✓ Wersja gry {}: wszystkie łatki dostępne',
@@ -823,7 +823,7 @@ TRANSLATIONS = {
     ],
     'tr': [
         'Oyna', 'Grafik', 'Ekran ve FPS', 'Oyun ve efektler', 'Modlar ve yamalar', 'Gelişmiş', 'Günlük',
-        'OYNA', 'Durdur', 'yerel port · Windows', 'Oyunda: Insert veya L3+R3\nport menüsünü açar.',
+        'OYNA', 'Durdur', 'yerel port · {}', 'Oyunda: Insert veya L3+R3\nport menüsünü açar.',
         'Hazırlık kontrolü', 'Hızlı ayarlar', 'Kare hızı', 'Ölçekleyici', 'Ön ayar', 'Çıkış', 'Tam ekran',
         '{} · oyun sürümü {}', 'Oyun klasörü seçilmedi', 'Oyun klasörünü seçin (Oyun ve efektler)',
         '✓ Oyun sürümü {}: tüm yamalar kullanılabilir',
@@ -924,7 +924,7 @@ TRANSLATIONS = {
     ],
     'zh': [
         '开始', '图形', '显示与帧率', '游戏与效果', '模组与补丁', '高级', '日志',
-        '开始游戏', '停止', '原生移植 · Windows', '游戏中：Insert 或 L3+R3\n打开移植版菜单。',
+        '开始游戏', '停止', '原生移植 · {}', '游戏中：Insert 或 L3+R3\n打开移植版菜单。',
         '就绪检查', '快速设置', '帧率', '超分辨率', '预设', '输出', '全屏',
         '{} · 游戏版本 {}', '未设置游戏文件夹', '请选择游戏文件夹（游戏与效果）',
         '✓ 游戏版本 {}：所有补丁可用',
@@ -1023,7 +1023,7 @@ TRANSLATIONS = {
     ],
     'ja': [
         'プレイ', 'グラフィック', '表示とFPS', 'ゲームとエフェクト', 'MODとパッチ', '詳細設定', 'ログ',
-        'プレイ', '停止', 'ネイティブ移植 · Windows', 'ゲーム中：Insert または L3+R3\nで移植版メニューを開きます。',
+        'プレイ', '停止', 'ネイティブ移植 · {}', 'ゲーム中：Insert または L3+R3\nで移植版メニューを開きます。',
         '準備チェック', 'クイック設定', 'フレームレート', 'アップスケーラー', 'プリセット', '出力', 'フルスクリーン',
         '{} · ゲームバージョン {}', 'ゲームフォルダー未設定', 'ゲームフォルダーを選択してください（ゲームとエフェクト）',
         '✓ ゲームバージョン {}：すべてのパッチを使用できます',
@@ -1122,7 +1122,7 @@ TRANSLATIONS = {
     ],
     'ko': [
         '플레이', '그래픽', '디스플레이 및 FPS', '게임 및 효과', '모드 및 패치', '고급', '로그',
-        '플레이', '중지', '네이티브 포트 · Windows', '게임 중: Insert 또는 L3+R3\n포트 메뉴 열기.',
+        '플레이', '중지', '네이티브 포트 · {}', '게임 중: Insert 또는 L3+R3\n포트 메뉴 열기.',
         '준비 상태', '빠른 설정', '프레임 속도', '업스케일러', '프리셋', '출력', '전체 화면',
         '{} · 게임 버전 {}', '게임 폴더가 지정되지 않음', '게임 폴더를 선택하세요 (게임 및 효과)',
         '✓ 게임 버전 {}: 모든 패치 사용 가능',

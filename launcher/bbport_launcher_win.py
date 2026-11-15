@@ -3015,7 +3015,7 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
         key = ('hero', w, h) + tuple((cx, cw, line) for cx, cw, _t, _f, line, _g in chips)
         self.banner_image = self.theme.cached(key, art)
         c.create_image(0, 0, image=self.banner_image, anchor='nw')
-        c.create_text(x, y, text=_('native port · Windows', 'нативный порт · Windows').upper(), anchor='w',
+        c.create_text(x, y, text=_('native port · {}', 'нативный порт · {}').format(host.platform_label()).upper(), anchor='w',
                       fill=GOLD, font=(theme.HEAD, 10))
         c.create_text(x - px(2), y + px(42), text='Bloodborne', anchor='w', fill=theme.TEXT_STRONG,
                       font=(theme.HEAD_BOLD, 40))

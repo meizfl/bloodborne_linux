@@ -20,6 +20,15 @@ def family(name=None):
     return 'linux' if name.startswith('linux') else 'posix'
 
 
+def platform_label():
+    """Read the running OS and machine architecture rather than a package label."""
+    system = platform.system() or sys.platform
+    machine = platform.machine().strip().lower()
+    architecture = {'amd64': 'x86_64', 'x64': 'x86_64', 'aarch64': 'arm64',
+                    'i386': 'x86', 'i486': 'x86', 'i586': 'x86', 'i686': 'x86'}.get(machine, machine)
+    return f'{system} · {architecture or ("64-bit" if sys.maxsize > 2**32 else "32-bit")}'
+
+
 def configure_portable(executable=None, frozen=None, env=None):
     """Opt-in local Linux profiles, applied before the UI module reads its paths."""
     frozen = getattr(sys, 'frozen', False) if frozen is None else frozen
