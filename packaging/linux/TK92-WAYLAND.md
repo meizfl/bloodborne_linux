@@ -97,3 +97,10 @@ The final wheel animation uses a critically damped spring: new input retargets
 motion without resetting velocity, fractional pixels accumulate, and reaching
 a scroll boundary cancels inertia. Regression tests cover acceleration from
 rest, distance preservation across multiple notches, page changes and edges.
+
+`tk92-canvas-damage.patch` restores photo items across the same six-pixel
+antialiasing margin cleared by Canvas. Without it, partial redraws leave black
+rectangular borders over the banner. `check_canvas_damage.py` reads actual FBO
+pixels after deleting several shapes; the original snapshot fails with black
+pixels and the patched renderer restores the original background color.
+Run it through `check-tk92-wayland.sh` using the preview image and Python 3.14.

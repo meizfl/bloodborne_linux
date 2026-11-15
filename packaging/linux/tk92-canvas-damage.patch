@@ -1,0 +1,19 @@
+--- a/generic/tkCanvas.c
++++ b/generic/tkCanvas.c
+@@ -3257,8 +3257,16 @@
+ 		    canvasPtr->canvas_state == TK_STATE_HIDDEN)) {
+ 		continue;
+ 	    }
++#ifdef TK_USE_WAYLAND
++            /* The clear/clip rectangle includes AA_PAD on every edge.
++             * Restore that margin too, especially for photo image items. */
++            ItemDisplay(canvasPtr, itemPtr, pixmap,
++                    screenX1 - AA_PAD, screenY1 - AA_PAD,
++                    width + 2 * AA_PAD, height + 2 * AA_PAD);
++#else
+ 	    ItemDisplay(canvasPtr, itemPtr, pixmap, screenX1, screenY1, width,
+ 		    height);
++#endif
+ 	}
+ 
+ #ifndef TK_NO_DOUBLE_BUFFERING

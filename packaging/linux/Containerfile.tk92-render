@@ -1,4 +1,6 @@
 FROM localhost/bbport-tk92
 COPY packaging/linux/tk92-hidden-widgets.patch /tmp/tk92-hidden-widgets.patch
+COPY packaging/linux/tk92-canvas-damage.patch /tmp/tk92-canvas-damage.patch
 RUN cd /tmp/tk92/tk-* && patch -p1 < /tmp/tk92-hidden-widgets.patch \
+    && patch -p1 < /tmp/tk92-canvas-damage.patch \
     && cd unix && make -j8 && make install-binaries install-libraries install-headers
