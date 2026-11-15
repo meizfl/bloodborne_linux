@@ -62,7 +62,8 @@ def prepare(port, args=()):
     out = data / 'out'
     out.mkdir(parents=True, exist_ok=True)
     config = env.setdefault('BB_CONFIG', str(data / 'bbport.ini'))
-    user = env.setdefault('BB_USER_DIR', str(data / 'user'))
+    user = str(run.user_folders(env, data))
+    env['BB_USER_DIR'] = user
     env.setdefault('BB_LOCAL_CHALICE_CATALOG', str(resource_root() / 'data/local_chalice/catalog.bin'))
     if not env.get('BB_FSR411_DIR') and (data / 'fsr4_411').is_dir():
         env['BB_FSR411_DIR'] = str(data / 'fsr4_411')
@@ -124,6 +125,8 @@ def prepare(port, args=()):
             live = '1' if live == '1' else '0'
         params = argparse.Namespace(config=config, live=live, output=output, groups=groups, caps=str(caps))
         start.attempt('ui-res', start.ui_res, params, results)
+        live = next((line[5:] for line in reversed(results.lines) if line.startswith('live ')), live)
+        params.live = live
         if live != '1' and scaled:
             env.update(BB_RENDER_RES=f'{scaled[0][0]}x{scaled[0][1]}', BB_OUTPUT_RES=output, BB_AUTO_RENDER_RES='1')
             env.setdefault('BB_DMEM_MB', '9152')

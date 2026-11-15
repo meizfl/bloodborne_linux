@@ -32,7 +32,9 @@ The separate runtime and game directories must remain available during play.
 
 Host tools: Git, Python 3 (only the build coordinator) and rootless Podman. The host
 compiler and glibc do not determine the resulting ABI. The container uses Debian 11,
-Python 3.12/Tk 8.6, GCC 14.2.0, pinned dependency releases and a dated Debian snapshot.
+Python 3.12/Tk 8.6, Clang/LLVM 23, libc++, pinned dependency releases and a dated
+Debian snapshot. All project C/C++ code and the PyInstaller bootloader are built
+with Clang; the container builds its C++ dependencies with libc++ too.
 
 ```sh
 git clone --recursive git@github.com:meizfl/bloodborne_linux.git
@@ -54,19 +56,21 @@ possible, but it does not establish this compatibility baseline.
 
 The host still supplies glibc, GPU drivers and the desktop session. This is x86-64
 Linux/Vulkan, not a static binary or an emulation layer. FFmpeg is an LGPL build
-with the H.264/AAC and MP4/MOV support used by the game's movies.
+with the H.264/HEVC/AAC and MP4/MOV support used by the game's movies.
 
 To build just the launcher inside the prepared image:
 
 ```sh
 podman run --rm --init -v "$PWD:/src:ro" -v "$PWD/dist/debian11:/output" \
   localhost/bbport-debian11 bash -c \
-  'cp -a /src /tmp/build && cd /tmp/build && xvfb-run -a python packaging/build_launcher.py --dist-dir /output/launcher --check --ui-check'
+  'mkdir /tmp/build && cd /src && tar --exclude=./out --exclude=./dist --exclude=.git -cf - . | tar -xf - -C /tmp/build; cd /tmp/build && xvfb-run -a python packaging/build_launcher.py --dist-dir /output/launcher --check --ui-check'
 ```
 
 ## Windows: build the single executable
 
-Install 64-bit Python 3.12+ from python.org with Tcl/Tk enabled and Git. In PowerShell:
+Install 64-bit Python 3.12+ from python.org with Tcl/Tk enabled, Git, LLVM/Clang
+and Visual Studio Build Tools with the Windows SDK. Open the x64 Developer
+PowerShell so Clang can locate the Windows SDK and linker:
 
 ```powershell
 git clone --recursive https://github.com/meizfl/bloodborne_linux.git
@@ -74,6 +78,12 @@ cd bloodborne_linux
 git switch codex/linux-shared-launcher
 py -3.12 -m venv .venv
 .\.venv\Scripts\python -m pip install -r packaging/launcher-requirements.txt
+$env:CC = "clang"
+$env:CXX = "clang++"
+$env:LDFLAGS = "-fuse-ld=lld"
+$env:PYINSTALLER_COMPILE_BOOTLOADER = "1"
+$env:PYINSTALLER_BOOTLOADER_WAF_ARGS = "--clang"
+.\.venv\Scripts\python -m pip install --force-reinstall --no-cache-dir --no-binary=PyInstaller PyInstaller==6.16.0
 .\.venv\Scripts\python packaging/test_launcher.py
 .\.venv\Scripts\python packaging/build_launcher.py --check --ui-check
 ```

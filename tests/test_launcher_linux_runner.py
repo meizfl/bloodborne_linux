@@ -34,3 +34,40 @@ class EmbeddedRunnerTests(unittest.TestCase):
             with self.assertRaises(OSError):
                 runner.main('/install')
         cleanup.assert_called_once_with(Path('/overlay'), Path('/game'))
+
+
+@unittest.skipUnless(sys.platform.startswith('linux'), 'Linux preparation')
+class ResolutionDecisionTests(unittest.TestCase):
+    def test_ui_decision_can_force_startup_resolution_over_live_request(self):
+        import tempfile
+        import json
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+        import linux_start
+        import patches
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            game, data = root / 'Game', root / 'profile'
+            game.mkdir()
+            (game / 'eboot.bin').touch()
+            (data / 'out').mkdir(parents=True)
+            (data / 'out/link.json').write_text(json.dumps({}))
+
+            def step(name, _function, *args):
+                results = args[-1]
+                if name == 'before-view':
+                    results.add('groups', 'fps,resolution,effects')
+                elif name == 'ui-res':
+                    results.add('live', '0')  # Sharp UI/ultrawide needs the startup patch.
+
+            with mock.patch.dict(runner.os.environ, {'BB_GAME_DIR': str(game), 'BB_DATA_DIR': str(data),
+                                                      'BB_LIVE_RES': '1'}, clear=True), \
+                    mock.patch.object(linux_start, 'attempt', side_effect=step), \
+                    mock.patch.object(patches, 'read_settings', return_value={}), \
+                    mock.patch.object(patches, 'scaled_sizes', return_value=((1720, 720), (3440, 1440))), \
+                    mock.patch.object(runner, 'script', side_effect=lambda name, *a, **k: str(game)
+                                      if name == 'mods.py' else None):
+                runner.prepare(root)
+                self.assertEqual(runner.os.environ['BB_RENDER_RES'], '1720x720')
+                self.assertEqual(runner.os.environ['BB_OUTPUT_RES'], '3440x1440')
+                self.assertTrue(Path(runner.os.environ['BB_GPU_USER_DIR']).is_dir())
+                self.assertEqual(Path(runner.os.environ['BB_GPU_USER_DIR']), data / 'user')

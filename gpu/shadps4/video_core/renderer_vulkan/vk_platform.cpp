@@ -78,31 +78,45 @@ vk::SurfaceKHR CreateSurface(vk::Instance instance, const Frontend::WindowSDL& e
     }
 #elif defined(VK_USE_PLATFORM_XLIB_KHR) || defined(VK_USE_PLATFORM_WAYLAND_KHR)
     if (window_info.type == Frontend::WindowSystemType::X11) {
-        const vk::XlibSurfaceCreateInfoKHR xlib_ci = {
+        const VkXlibSurfaceCreateInfoKHR xlib_ci = {
+            .sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
             .dpy = static_cast<Display*>(window_info.display_connection),
             .window = reinterpret_cast<Window>(window_info.render_surface),
         };
 
-        if (instance.createXlibSurfaceKHR(&xlib_ci, nullptr, &surface) != vk::Result::eSuccess) {
-            LOG_ERROR(Render_Vulkan, "Failed to initialize Xlib surface");
+        // WSI macros are local to this TU. Other TUs initialize Vulkan-Hpp's
+        // dispatcher without Xlib/Wayland entries, so resolve these at the call
+        // site instead of depending on which inline init() the linker selected.
+        const auto create = reinterpret_cast<PFN_vkCreateXlibSurfaceKHR>(
+            VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr(instance, "vkCreateXlibSurfaceKHR"));
+        VkSurfaceKHR native_surface{};
+        const auto result = create ? create(instance, &xlib_ci, nullptr, &native_surface) : VK_ERROR_EXTENSION_NOT_PRESENT;
+        if (result != VK_SUCCESS) {
+            LOG_ERROR(Render_Vulkan, "Failed to initialize Xlib surface: {}", static_cast<int>(result));
             UNREACHABLE();
         }
+        surface = native_surface;
     } else if (window_info.type == Frontend::WindowSystemType::Wayland) {
         if (EmulatorSettings.IsRenderdocEnabled()) {
             LOG_ERROR(Render_Vulkan,
                       "RenderDoc is not compatible with Wayland, use an X11 window instead.");
         }
 
-        const vk::WaylandSurfaceCreateInfoKHR wayland_ci = {
+        const VkWaylandSurfaceCreateInfoKHR wayland_ci = {
+            .sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
             .display = static_cast<wl_display*>(window_info.display_connection),
             .surface = static_cast<wl_surface*>(window_info.render_surface),
         };
 
-        if (instance.createWaylandSurfaceKHR(&wayland_ci, nullptr, &surface) !=
-            vk::Result::eSuccess) {
-            LOG_ERROR(Render_Vulkan, "Failed to initialize Wayland surface");
+        const auto create = reinterpret_cast<PFN_vkCreateWaylandSurfaceKHR>(
+            VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr(instance, "vkCreateWaylandSurfaceKHR"));
+        VkSurfaceKHR native_surface{};
+        const auto result = create ? create(instance, &wayland_ci, nullptr, &native_surface) : VK_ERROR_EXTENSION_NOT_PRESENT;
+        if (result != VK_SUCCESS) {
+            LOG_ERROR(Render_Vulkan, "Failed to initialize Wayland surface: {}", static_cast<int>(result));
             UNREACHABLE();
         }
+        surface = native_surface;
     }
 #elif defined(VK_USE_PLATFORM_METAL_EXT)
     if (window_info.type == Frontend::WindowSystemType::Metal) {

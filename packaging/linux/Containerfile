@@ -12,9 +12,14 @@ RUN printf '%s\n' \
     libvulkan-dev libboost-dev libxxhash-dev libssl-dev zlib1g-dev \
     libminiupnpc-dev nlohmann-json3-dev libprotobuf-dev protobuf-compiler nasm \
     && rm -rf /var/lib/apt/lists/*
-RUN python -m pip install --no-cache-dir cmake==3.31.6 Pillow==11.3.0 PyInstaller==6.16.0
+COPY packaging/linux/install-llvm.sh /tmp/install-llvm.sh
+RUN bash /tmp/install-llvm.sh
+COPY gpu/mingw_libcxx_compat.h /opt/bb-cxx-compat.h
+ENV CC=clang CXX=clang++ CXXFLAGS="-stdlib=libc++ -include /opt/bb-cxx-compat.h" LDFLAGS=-fuse-ld=lld \
+    AR=llvm-ar RANLIB=llvm-ranlib BB_CXX_RUNTIME=c++
+RUN python -m pip install --no-cache-dir cmake==3.31.6 Pillow==11.3.0 \
+    && PYINSTALLER_COMPILE_BOOTLOADER=1 python -m pip install --no-cache-dir --no-binary=PyInstaller PyInstaller==6.16.0
 COPY packaging/linux/build-dependencies.sh /tmp/build-dependencies.sh
-RUN bash /tmp/build-dependencies.sh gcc
 RUN bash /tmp/build-dependencies.sh fmt
 RUN bash /tmp/build-dependencies.sh robin
 RUN bash /tmp/build-dependencies.sh vulkan-headers
@@ -31,7 +36,11 @@ RUN bash /tmp/build-dependencies.sh miniupnpc
 RUN bash /tmp/build-dependencies.sh vulkan-loader
 COPY packaging/linux/modern-headers.sh /tmp/modern-headers.sh
 RUN bash /tmp/modern-headers.sh
-ENV PATH="/opt/gcc/bin:/opt/bb-deps/bin:${PATH}" \
+COPY packaging/linux/build-openssl.sh /tmp/build-openssl.sh
+RUN bash /tmp/build-openssl.sh
+COPY packaging/linux/complete-ffmpeg.sh /tmp/complete-ffmpeg.sh
+RUN bash /tmp/complete-ffmpeg.sh
+ENV PATH="/opt/bb-deps/bin:${PATH}" \
     CMAKE_PREFIX_PATH=/opt/bb-deps PKG_CONFIG_PATH=/opt/bb-deps/lib/pkgconfig \
-    LD_LIBRARY_PATH=/opt/bb-deps/lib:/opt/gcc/lib64
+    LD_LIBRARY_PATH=/opt/bb-deps/lib
 WORKDIR /src

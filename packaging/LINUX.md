@@ -1,13 +1,15 @@
 # Linux build
 
-The Linux version is the native `bb-probe` (ELF) with `run.sh` and the shared Tk launcher
-(`launcher/bloodborne_launcher.py`), packaged with Nix as an AppImage (Steam Deck and most desktops).
-See [LAUNCHER.md](LAUNCHER.md) for shared launcher packaging and validation.
-The older GTK launcher remains available with `gtkLauncher = true` in Nix.
+The default distribution is one `BloodborneLauncher` executable with the native
+ELF runtime in `game_runtime/`. It is built with Clang/LLVM in a Debian 11 Podman
+container, targeting glibc 2.31. See [BUILD.md](BUILD.md) for the complete recipe.
+
+The source tree also retains the developer `run.sh` entry and the earlier
+Nix/AppImage package. The older GTK launcher is selectable with `gtkLauncher = true`.
 
 ## Build and run from source
 
-Requires x86-64 Linux, GCC/G++ or Clang with C++23 support, CMake 3.24+, Ninja,
+Requires x86-64 Linux, Clang with C++23 support, CMake 3.24+, Ninja,
 pkg-config and Python 3. Install development packages for Vulkan, SDL3, FFmpeg,
 Boost, fmt, robin-map, xxhash, Vulkan Memory Allocator, Zydis, glslang, X11,
 Protobuf (including protoc), OpenSSL, zlib, nlohmann-json and miniupnpc.
@@ -26,8 +28,9 @@ For the graphical launcher, install Tkinter and Pillow,
 then run `python3 launcher/bloodborne_launcher.py`.
 The older GTK UI needs GTK4, libadwaita and Python GObject bindings; use
 `nix-shell launcher/shell.nix --run 'python3 launcher/bbport_launcher.py'` for it.
-Pillow is optional for trophy pictures. Source builds keep settings and saves in
-the checkout by default; `BB_DATA_DIR` selects a separate writable directory.
+Pillow is optional for trophy pictures. The developer `run.sh` defaults to the
+checkout; the shared launcher stores settings and saves in
+`$HOME/.local/share/Bloodborne`. `BB_DATA_DIR` overrides the data directory.
 `CC` and `CXX` select the C and C++ compilers, `BB_LTO=OFF` disables LTO, and
 `CMAKE_BUILD_PARALLEL_LEVEL` limits GPU compilation jobs.
 

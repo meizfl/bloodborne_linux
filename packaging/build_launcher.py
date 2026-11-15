@@ -3,6 +3,7 @@
 """Build the shared launcher on Windows or Linux. Does not build or bundle the game."""
 import argparse
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -21,6 +22,19 @@ def copy_resources(target):
         'from pathlib import Path\nimport sys\n'
         'sys.path.insert(0, str(Path(__file__).resolve().parent / "launcher"))\n'
         'from bloodborne_launcher import main\nraise SystemExit(main())\n', encoding='utf-8')
+
+
+def linux_tk_libraries():
+    """Include Tk's ELF closure even for libraries PyInstaller considers system X11.
+
+    A desktop normally has them, but a single executable must also import cleanly
+    on the minimal Debian 11 verification image. Host glibc stays external.
+    """
+    import _tkinter
+    output = subprocess.check_output(['ldd', _tkinter.__file__], text=True)
+    system = re.compile(r'^(ld-linux.*|lib(c|m|pthread|dl|rt|resolv|util|anl)\.so[.\d]*)$')
+    return [path for name, path in re.findall(r'^\s*(\S+) => (/\S+)', output, re.M)
+            if not system.match(name)]
 
 
 def main(argv=None):
@@ -57,6 +71,9 @@ def main(argv=None):
                    're', 'shutil', 'struct', 'tempfile', 'xml.etree.ElementTree', 'urllib.request', 'ctypes.wintypes',
                    'PIL._tkinter_finder', 'PIL._imagingtk', 'run', 'linux_start', 'bbport_linux_runner'):
         command += ['--hidden-import', module]
+    if host == 'linux':
+        for library in linux_tk_libraries():
+            command += ['--add-binary', library + os.pathsep + '.']
     if host == 'windows':
         from PIL import Image
         icon = work / 'bloodborne.ico'

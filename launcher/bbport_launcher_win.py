@@ -163,14 +163,14 @@ class LossyStream:
 def run_role(argv):
     """--run [args]: run.py; --script <file> [args]: a preparation script. Returns an exit code."""
     attach_stdio()
-    if not WINDOWS and argv[0] == '--run':
-        return host.run_game(PORT_DIR, CONFIG_DIR, argv[1:])
     for stream in (sys.stdout, sys.stderr):  # keep messages in order with the game's output
         try:
             stream.reconfigure(line_buffering=True)
         except (AttributeError, ValueError):
             pass
     sys.stdout, sys.stderr = LossyStream(sys.stdout), LossyStream(sys.stderr)
+    if not WINDOWS and argv[0] == '--run':
+        return host.run_game(PORT_DIR, CONFIG_DIR, argv[1:])
     if argv[0] == '--script':
         path = Path(argv[1])
         if not path.is_file():

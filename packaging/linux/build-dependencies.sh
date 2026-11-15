@@ -1,15 +1,9 @@
 #!/bin/bash
 set -euo pipefail
-mkdir -p /opt/gcc /opt/bb-deps /tmp/bb-deps
+mkdir -p /opt/bb-deps /tmp/bb-deps
 cd /tmp/bb-deps
-if [[ ${1:-all} == gcc || ${1:-all} == all ]]; then
-curl -fL --retry 3 https://github.com/xpack-dev-tools/gcc-xpack/releases/download/v14.2.0-2/xpack-gcc-14.2.0-2-linux-x64.tar.gz -o gcc.tar.gz
-echo 'd27b09c677cefde24bdaacdde045d35ea1a391fbb5b4525d057e1974af912c4d  gcc.tar.gz' | sha256sum -c -
-tar -xf gcc.tar.gz -C /opt/gcc --strip-components=1
-fi
-export PATH=/opt/gcc/bin:$PATH
-export LD_LIBRARY_PATH=/opt/gcc/lib64
-export CC=gcc CXX=g++ CMAKE_PREFIX_PATH=/opt/bb-deps PKG_CONFIG_PATH=/opt/bb-deps/lib/pkgconfig
+export CC=clang CXX=clang++ CMAKE_PREFIX_PATH=/opt/bb-deps PKG_CONFIG_PATH=/opt/bb-deps/lib/pkgconfig
+export CXXFLAGS="-stdlib=libc++ -include /opt/bb-cxx-compat.h" LDFLAGS=-fuse-ld=lld
 build() {
     local name=$1 url=$2
     shift 2
@@ -53,8 +47,8 @@ curl -fL --retry 3 https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz -o ffmpeg.tar
 mkdir ffmpeg
 tar -xf ffmpeg.tar.xz -C ffmpeg --strip-components=1
 cd ffmpeg
-./configure --prefix=/opt/bb-deps --enable-shared --disable-static --disable-programs --disable-doc \
-    --disable-debug --disable-autodetect --disable-everything --enable-decoder=h264,aac \
+./configure --cc=clang --cxx=clang++ --ld=clang --ar=llvm-ar --ranlib=llvm-ranlib --prefix=/opt/bb-deps --enable-shared --disable-static --disable-programs --disable-doc \
+    --disable-debug --disable-autodetect --disable-everything --enable-decoder=h264,aac,hevc \
     --enable-demuxer=mov --enable-parser=h264,aac --enable-protocol=file --enable-pic
 make -j4
 make install

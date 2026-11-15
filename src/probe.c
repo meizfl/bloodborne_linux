@@ -502,7 +502,16 @@ void runtime_restart(void) {
         _exit(85); /* bbport_linux_runner repeats preparation after this process exits. */
     }
     puts("Runtime: restarting through run.sh");
-    syscall(SYS_close_range, 3u, ~0u, 0u);
+    int closed = 0;
+#ifdef SYS_close_range
+    closed = syscall(SYS_close_range, 3u, ~0u, 0u) == 0;
+#endif
+    if (!closed) {
+        /* Debian 11's glibc headers predate close_range; old kernels may too. */
+        long limit = sysconf(_SC_OPEN_MAX);
+        if (limit < 0) limit = 65536;
+        for (long fd = 3; fd < limit; ++fd) close((int)fd);
+    }
     execlp("bash", "bash", "run.sh", (char *)NULL);
     perror("runtime_restart: exec");
     _exit(1);

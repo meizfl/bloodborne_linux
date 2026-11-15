@@ -17,7 +17,9 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     subprocess.run(['podman', 'build', '--layers', '-t', 'localhost/bbport-debian11',
                     '-f', 'packaging/linux/Containerfile', '.'], cwd=ROOT, check=True)
-    subprocess.run(['podman', 'run', '--rm', '--init', '-e', f'JOBS={args.jobs}',
+    image = subprocess.check_output(['podman', 'image', 'inspect', '--format', '{{.Id}}',
+                                     'localhost/bbport-debian11'], text=True).strip()
+    subprocess.run(['podman', 'run', '--rm', '--init', '-e', f'JOBS={args.jobs}', '-e', f'BB_BUILD_IMAGE={image}',
                     '-v', f'{ROOT}:/src:ro', '-v', f'{output}:/output',
                     '-v', 'bbport-debian11-build:/build',
                     'localhost/bbport-debian11', 'bash', '/src/packaging/linux/build-in-container.sh'], check=True)
