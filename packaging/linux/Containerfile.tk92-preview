@@ -1,3 +1,0 @@
-FROM localhost/bbport-tk92-render AS render
-FROM localhost/bbport-tk92-python
-COPY --from=render /opt/tk92 /opt/tk92

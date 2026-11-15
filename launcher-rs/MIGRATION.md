@@ -1,6 +1,6 @@
 # Rust migration — work in progress
 
-The production Python launcher is still the reference implementation. This branch
+The production launcher on the original branches remains the reference. This branch
 is not a completed replacement and must not overwrite a working installation.
 The development Rust frontend uses the same patched Tk 9.2 in process, without
 Python or an external wish process. Rust uses the LLVM compiler toolchain;
@@ -55,11 +55,6 @@ building the existing patched Tk preview image. `--check-tk`, `--check-ui`,
 `--preview-ui` is a development preview. Unported callbacks are explicitly
 reported, not treated as implemented functionality.
 
-`tools/rust-migration/export_ui.py` is a one-time reference extraction/QA tool,
-not code run by the Rust launcher. The checked-in interface resources contain
-no user account/profile data; exports use an isolated test profile.
-
-
 Linux development build (after the patched Tk images described in
 `packaging/linux/TK92-WAYLAND.md` have been built):
 
@@ -71,26 +66,23 @@ podman run --rm --init -v "$PWD:/src" \
   -v "$PWD/out/rust-cargo/registry:/opt/cargo/registry" \
   -e CARGO_TARGET_DIR=/src/out/rust-build \
   -e BB_TK_BUNDLE=/src/out/rust-toolkit localhost/bbport-rust-launcher bash -c \
-  'python3 /src/packaging/linux/stage-rust-toolkit.py /src/out/rust-toolkit && cargo test --locked --offline && cargo build --locked --offline --release'
+  'bash /src/packaging/linux/stage-rust-toolkit.sh /src/out/rust-toolkit && cargo test --locked --offline && cargo build --locked --offline --release'
 ```
 
 The development executable is `out/rust-build/release/bloodborne-launcher`.
-Python above stages build resources; it is not included in or called by that
-executable. `--preview-ui` remains required until behavior parity is complete.
+The shell command stages native build resources; it is not a player launch wrapper.
+`--preview-ui` remains required until behavior parity is complete.
 Do not distribute this preview as the finished launcher.
 
-`tools/rust-migration/check_native.py` compares native patch binaries,
-fingerprints, prepared images and CPU/red-zone reports with the reference.
-It accepts a binary, a prepared output directory, `--reference-prepared` and
-`--output`; it requires local game preparation outputs but never distributes them.
+This branch intentionally omits the Python reference and all Python migration/QA
+scripts. Their last version remains on `codex/rust-launcher`. Checked-in UI and
+patch resources are data; native action identifiers replace source-code snippets.
+The native Rust unit tests and `--check-interactions` remain available.
 
-`tools/rust-migration/export_patch_plans.py` exports the existing source's own
-literal machine-code plans and signature guards without opening any game files.
-Rust checks those guards and mapped page bounds before writing the patch output.
-The in-game text/asset layers needed by some menu features are still part of the
-remaining runtime migration; exported code plans alone do not finish those features.
-
-`tools/rust-migration/check_input.py` compares input.ini reading and editing,
-including secondary controller bindings, whitespace/tags, BOM, layout replacement,
-and mouse settings. Its fixtures are synthetic or the public default configuration.
-`export_input_spec.py` exports the source's own key names, aliases and defaults.
+The build-image chain is `Containerfile` → `Containerfile.tk92` →
+`Containerfile.tk92-render` → `Containerfile.rust-launcher`, tagged respectively
+`localhost/bbport-debian11`, `localhost/bbport-tk92`,
+`localhost/bbport-tk92-render`, `localhost/bbport-rust-launcher`.
+CMake/Meson and other external native build tools may use system Python; no
+project Python code is included in this branch. To run Rust core tests without
+building Tk, use `cargo test --locked --manifest-path launcher-rs/Cargo.toml`.

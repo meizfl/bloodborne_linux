@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-python -m pip install --no-cache-dir meson==1.7.0
+python3 -m pip install --no-cache-dir meson==1.7.0
 cd /tmp/bb-deps
 curl -fsSL --retry 3 https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.24.0/downloads/wayland-1.24.0.tar.xz -o wayland.tar.xz
 mkdir -p wayland

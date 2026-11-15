@@ -143,11 +143,11 @@ impl Ui {
         {
             if let Some(widget) = metadata["widget"].as_str() {
                 let function = metadata["name"].as_str().unwrap_or("");
-                let method = if function.ends_with(".yview") {
+                let method = if function.ends_with("/yview") {
                     Some("yview")
-                } else if function.ends_with(".xview") {
+                } else if function.ends_with("/xview") {
                     Some("xview")
-                } else if function == "Scrollbar.set" {
+                } else if function == "Scrollbar/set" {
                     Some("set")
                 } else {
                     None

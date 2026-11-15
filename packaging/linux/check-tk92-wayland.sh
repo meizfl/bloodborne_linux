@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run inside bbport-tk92(-python), forwarding only a native Wayland socket.
+# Run inside the native Tk builder, forwarding only a native Wayland socket.
 set -euo pipefail
 : "${XDG_RUNTIME_DIR:?Mount a Wayland socket and set XDG_RUNTIME_DIR}"
 : "${WAYLAND_DISPLAY:?Set WAYLAND_DISPLAY to the forwarded socket name}"

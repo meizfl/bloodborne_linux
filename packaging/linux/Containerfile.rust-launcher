@@ -1,5 +1,5 @@
 # Build Rust and the existing patched native Wayland toolkit on the same ABI baseline.
-FROM localhost/bbport-tk92-preview
+FROM localhost/bbport-tk92-render
 ENV RUSTUP_HOME=/opt/rustup CARGO_HOME=/opt/cargo
 RUN curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs -o /tmp/rustup-init.sh \
     && sh /tmp/rustup-init.sh -y --profile minimal --default-toolchain 1.85.1 --no-modify-path

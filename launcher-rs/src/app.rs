@@ -144,7 +144,7 @@ impl App {
     }
     fn sync_choices(&self) -> Result<()> {
         for metadata in self.ui.manifest["callbacks"].as_object().unwrap().values() {
-            if metadata["name"] != "Launcher.choice.<locals>.show" {
+            if metadata["name"] != "Launcher/choice/show" {
                 continue;
             }
             let args = &metadata["arguments"];
@@ -256,7 +256,11 @@ impl App {
             return Ok(());
         };
         let name = metadata["name"].as_str().unwrap_or("");
-        let source = metadata["source"].as_str().unwrap_or("");
+        let action = |key: &str| {
+            metadata["actions"]
+                .as_array()
+                .is_some_and(|items| items.iter().any(|v| v.as_str() == Some(key)))
+        };
         let args = &metadata["arguments"];
         if let Some(variable) = metadata["set_variable"].as_str() {
             let value = metadata["set_value"]
@@ -266,19 +270,19 @@ impl App {
             self.ui.tk.call(&["set", variable, &value])?;
             return Ok(());
         }
-        if source.contains("self.nav_paint(n") {
+        if action("nav_paint") {
             let page = metadata["defaults"][0]
                 .as_str()
                 .ok_or("Missing navigation target")?;
-            return self.ui.nav_paint(page, source.contains("hover=True"));
+            return self.ui.nav_paint(page, action("hover"));
         }
-        if source.contains("self.show(n)") {
+        if action("navigate") {
             let page = metadata["defaults"][0]
                 .as_str()
                 .ok_or("Missing navigation target")?;
             return self.navigate(page);
         }
-        if name == "HelpMixin.topic_card.<locals>.toggle" {
+        if name == "HelpMixin/topic_card/toggle" {
             let body = args["body"].as_str().ok_or("Missing help card body")?;
             let arrow = args["arrow"].as_str().ok_or("Missing help card arrow")?;
             let shown = self.ui.tk.call(&["winfo", "ismapped", body])? == "1";
@@ -301,15 +305,15 @@ impl App {
                 .call(&[arrow, "configure", "-text", if shown { "›" } else { "⌄" }])?;
             return Ok(());
         }
-        if name == "Launcher.link_row.<locals>.<lambda>"
-            && source.contains("command() if command else self.show(page)")
-            && args["command"].is_null()
+        if name == "Launcher/link_row/lambda"
+            && action("page_link")
+            && metadata["has_command"] != true
         {
             if let Some(page) = args["page"].as_str() {
                 return self.navigate(page);
             }
         }
-        if source.contains(".bind('<Enter>'") || source.contains(".bind('<Leave>'") {
+        if action("enter") || action("leave") {
             let widget = args
                 .get("w")
                 .or_else(|| args.get("m"))
@@ -318,21 +322,9 @@ impl App {
                 .filter(|w| w.starts_with('.'));
             if let Some(widget) = widget {
                 let mut command = vec![widget.to_owned(), "configure".into()];
-                for (fragment, option, color) in [
-                    ("bg=LINE", "-background", "#25272b"),
-                    ("bg=CARD", "-background", "#16171a"),
-                    ("fg=TEXT", "-foreground", "#d9d4ca"),
-                    ("fg=MUTED", "-foreground", "#8a8c90"),
-                    ("fg=theme.TEXT", "-foreground", "#d9d4ca"),
-                    ("fg=theme.MUTED", "-foreground", "#8a8c90"),
-                    ("fg=theme.GOLD_LIGHT", "-foreground", "#c2a878"),
-                ] {
-                    if source.contains(&format!("{fragment},"))
-                        || source.contains(&format!("{fragment})"))
-                    {
-                        command.push(option.into());
-                        command.push(color.into());
-                    }
+                for pair in metadata["appearance"].as_array().into_iter().flatten() {
+                    command.push(pair[0].as_str().ok_or("Missing appearance option")?.into());
+                    command.push(pair[1].as_str().ok_or("Missing appearance color")?.into());
                 }
                 if command.len() > 2 {
                     self.ui.tk.call(&command)?;
@@ -340,10 +332,10 @@ impl App {
                 }
             }
         }
-        if name == "Launcher.wheel" || name == "Launcher.combobox_wheel" {
+        if name == "Launcher/wheel" || name == "Launcher/combobox_wheel" {
             return self.wheel(&event.arguments);
         }
-        if name == "Launcher.wrap_within.<locals>.fit" {
+        if name == "Launcher/wrap_within/fit" {
             let label = args["label"].as_str().ok_or("Missing wrap target")?;
             let width = Self::number(&event.arguments, 7);
             let requested = self
@@ -364,7 +356,7 @@ impl App {
             }
             return Ok(());
         }
-        if name == "Launcher.scrolled_page.<locals>.<lambda>" {
+        if name == "Launcher/scrolled_page/lambda" {
             let canvas = args["canvas"].as_str().ok_or("Missing scroll canvas")?;
             if let Some(id) = args["window"]
                 .as_i64()
@@ -388,10 +380,10 @@ impl App {
             }
             return Ok(());
         }
-        if name == "Launcher.choice.<locals>.show" {
+        if name == "Launcher/choice/show" {
             return self.sync_choices();
         }
-        if name == "Launcher.choice.<locals>.<lambda>" && source.contains("box.current()") {
+        if name == "Launcher/choice/lambda" && action("select_choice") {
             let widget = args["box"].as_str().ok_or("Missing choice widget")?;
             let index = self
                 .ui
@@ -407,7 +399,7 @@ impl App {
             ])?;
             return Ok(());
         }
-        if name == "Launcher.folder.<locals>.browse" {
+        if name == "Launcher/folder/browse" {
             let variable = args["var"].as_str().ok_or("Missing folder variable")?;
             let initial = self.ui.tk.call(&["set", variable])?;
             let path = self.ui.tk.call(&[
@@ -426,14 +418,14 @@ impl App {
             }
             return Ok(());
         }
-        if source.contains("self.open_path(var.get()") {
+        if action("open_folder") {
             let path = self
                 .ui
                 .tk
                 .call(&["set", args["var"].as_str().ok_or("Missing path variable")?])?;
             return crate::platform::open_path(std::path::Path::new(&path));
         }
-        if source.contains("webbrowser.open") {
+        if action("open_url") {
             if let Some(url) = args["url"]
                 .as_str()
                 .or_else(|| metadata["defaults"][0].as_str())
@@ -441,13 +433,13 @@ impl App {
                 return crate::platform::open_url(url);
             }
         }
-        if name == "Launcher.collect" {
+        if name == "Launcher/collect" {
             self.settings.save(&self.paths.settings())?;
             return self.ini.save(&self.paths.ini());
         }
         // This is a migration preview, never a silent success for an unported action.
         if self.pending.insert(name.into()) {
-            eprintln!("Rust migration pending handler: {name} ({source})");
+            eprintln!("Rust migration pending handler: {name}");
         }
         Ok(())
     }
@@ -470,7 +462,7 @@ impl App {
             .as_object()
             .unwrap()
             .iter()
-            .find(|(_, v)| v["name"] == "HelpMixin.topic_card.<locals>.toggle")
+            .find(|(_, v)| v["name"] == "HelpMixin/topic_card/toggle")
             .map(|(k, v)| (k.clone(), v["arguments"].clone()))
             .ok_or("No help toggle")?;
         let body = args["body"].as_str().unwrap();
@@ -491,11 +483,10 @@ impl App {
             .unwrap()
             .iter()
             .find(|(_, v)| {
-                v["name"] == "Launcher.build_controls.<locals>.<lambda>"
-                    && v["source"]
-                        .as_str()
-                        .unwrap_or("")
-                        .contains("m.configure(bg=LINE, fg=TEXT)")
+                v["name"] == "Launcher/build_controls/lambda"
+                    && v["actions"]
+                        .as_array()
+                        .is_some_and(|items| items.iter().any(|v| v == "control_hover"))
             })
             .map(|(k, v)| (k.clone(), v["defaults"][0].as_str().unwrap().to_owned()))
             .ok_or("No control hover")?;
@@ -509,11 +500,13 @@ impl App {
             .unwrap()
             .iter()
             .find(|(_, v)| {
-                v["name"] == "Launcher.choice.<locals>.<lambda>"
+                v["name"] == "Launcher/choice/lambda"
                     && v["arguments"]["values"]
                         .as_array()
                         .is_some_and(|v| v.len() > 1)
-                    && v["source"].as_str().unwrap_or("").contains("box.current()")
+                    && v["actions"]
+                        .as_array()
+                        .is_some_and(|items| items.iter().any(|v| v == "select_choice"))
             })
             .map(|(k, v)| (k.clone(), v["arguments"].clone()))
             .ok_or("No combobox handler")?;

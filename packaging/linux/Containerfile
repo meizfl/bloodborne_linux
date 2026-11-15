@@ -1,11 +1,11 @@
-# Debian 11 is the ABI baseline for both Python/Tk and the native runtime.
-FROM docker.io/library/python:3.12-bullseye
+# Debian 11 is the native ABI baseline. Build tools may use system Python.
+FROM docker.io/library/debian:11
 RUN printf '%s\n' \
     'deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/20260101T000000Z bullseye main' \
     'deb [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/20260101T000000Z bullseye-security main' > /etc/apt/sources.list \
     && rm -f /etc/apt/sources.list.d/* \
     && apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl git ninja-build pkg-config patchelf binutils xvfb xauth \
+    ca-certificates curl git ninja-build pkg-config patchelf binutils xvfb xauth python3 python3-pip \
     libfontconfig1-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
     libxfixes-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols \
     libasound2-dev libpulse-dev libudev-dev libdrm-dev libgbm-dev libegl1-mesa-dev \
@@ -17,8 +17,7 @@ RUN bash /tmp/install-llvm.sh
 COPY gpu/mingw_libcxx_compat.h /opt/bb-cxx-compat.h
 ENV CC=clang CXX=clang++ CXXFLAGS="-stdlib=libc++ -include /opt/bb-cxx-compat.h" LDFLAGS=-fuse-ld=lld \
     AR=llvm-ar RANLIB=llvm-ranlib BB_CXX_RUNTIME=c++
-RUN python -m pip install --no-cache-dir cmake==3.31.6 Pillow==11.3.0 \
-    && PYINSTALLER_COMPILE_BOOTLOADER=1 python -m pip install --no-cache-dir --no-binary=PyInstaller PyInstaller==6.16.0
+RUN python3 -m pip install --no-cache-dir cmake==3.31.6
 COPY packaging/linux/build-dependencies.sh /tmp/build-dependencies.sh
 RUN bash /tmp/build-dependencies.sh fmt
 RUN bash /tmp/build-dependencies.sh robin
@@ -47,6 +46,4 @@ COPY packaging/linux/build-wayland.sh /tmp/build-wayland.sh
 RUN bash /tmp/build-wayland.sh
 COPY packaging/linux/build-desktop-sdl.sh /tmp/build-desktop-sdl.sh
 RUN bash /tmp/build-desktop-sdl.sh
-COPY packaging/build_bootloader.py /tmp/build_bootloader.py
-RUN python /tmp/build_bootloader.py --verify-existing
 WORKDIR /src
