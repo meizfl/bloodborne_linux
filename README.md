@@ -1,7 +1,7 @@
 # Bloodborne for Windows and Linux
 <a href="https://trendshift.io/repositories/306163?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-306163" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/306163/daily?language=C%2B%2B" alt="Supermedo%2Funcharted_pc | Trendshift" width="250" height="55"/></a>
 
-**Bloodborne running natively on Windows 10 and 11, by [Supermedo](https://github.com/Supermedo) Mohammed Albarghouthi.**
+**Bloodborne running natively on Windows 10/11 and Linux, by [Supermedo](https://github.com/Supermedo) and [MeizFL](https://github.com/meizfl).**
 
 The original PlayStation 4 game runs directly on your PC: its own x86-64 code runs natively,
 and the graphics are translated to Vulkan. No emulator window, no setup scripts: unpack the zip,
@@ -74,7 +74,7 @@ https://nativeretro.com/
 
 ## Requirements
 
-- Windows 10 (1903 or later) or Windows 11, 64-bit
+- Windows 10/11 (1903 or later) or Linux glibc 2.31+, 64-bit
 - An Intel Core 4th generation (Haswell, 2013) or newer, or an AMD Ryzen: the game uses
   instructions of the PS4's processor (AVX, BMI1, MOVBE, LZCNT). Intel 2nd and 3rd generation
   (Sandy and Ivy Bridge) run with translated instructions, best effort; processors without AVX
