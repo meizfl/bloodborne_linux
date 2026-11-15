@@ -212,3 +212,22 @@ class UserDataMigrationTests(unittest.TestCase):
                 (target / 'user/save.bin').write_bytes(b'new character')
                 host.migrate_user_data(source)
                 self.assertEqual((target / 'user/save.bin').read_bytes(), b'new character')
+
+
+@unittest.skipUnless(sys.platform.startswith('linux'), 'Linux ELF loader environment')
+class NativeLibraryEnvironmentTests(unittest.TestCase):
+    def test_desktop_apps_drop_only_the_bundled_font_configuration(self):
+        bundled = {'FONTCONFIG_FILE': '/bundle/fonts.conf', 'BB_BUNDLED_FONTCONFIG': '/bundle/fonts.conf'}
+        self.assertNotIn('FONTCONFIG_FILE', host.desktop_environment(bundled))
+        bundled['FONTCONFIG_FILE'] = '/user/fonts.conf'
+        result = host.desktop_environment(bundled)
+        self.assertEqual(result['FONTCONFIG_FILE'], '/user/fonts.conf')
+        self.assertNotIn('BB_BUNDLED_FONTCONFIG', result)
+
+    def test_frozen_native_process_does_not_inherit_python_cpp_libraries(self):
+        env = {'LD_LIBRARY_PATH': '/python-bundle', 'LD_LIBRARY_PATH_ORIG': '/host-libraries', 'BB_ONLINE': '0'}
+        with mock.patch.object(host.sys, 'frozen', True, create=True):
+            result = host.native_environment('/install/game_runtime/bb-probe', env)
+        self.assertEqual(result['LD_LIBRARY_PATH'], '/install/game_runtime/libs:/host-libraries')
+        self.assertEqual(result['BB_ONLINE'], '0')
+        self.assertEqual(env['LD_LIBRARY_PATH'], '/python-bundle')

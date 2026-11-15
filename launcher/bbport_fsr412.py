@@ -21,7 +21,7 @@ def query_method(port, method, paths=None, env=None, refresh=False):
     api = 'vk' if method == 'vk' else 'dx12'
     exe = host.runtime_file(port, 'bb-gpu-capabilities.exe')
     if not exe.is_file(): exe = port/'out/gpu/bb-gpu-capabilities.exe'
-    environment = dict(os.environ if env is None else env)
+    environment = host.native_environment(exe, os.environ if env is None else env)
     runtime_dir = Path(environment.get('BB_TEST_FSR24_DIR') or exe.parent/'fsr24')
     runtime = runtime_dir/('amd_fidelityfx_upscaler_'+api+'.dll')
     if not runtime.is_file():

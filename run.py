@@ -259,6 +259,8 @@ def hold_game_mutex(name=GAME_MUTEX):
 
 def no_console():
     """Started without a console (the launcher): console programs must not open their own."""
+    if sys.platform != 'win32':
+        return 0
     return 0 if ctypes.windll.kernel32.GetConsoleWindow() else subprocess.CREATE_NO_WINDOW
 
 
@@ -420,9 +422,14 @@ def low_vram_mb(env, caps):
     if setting == '0':
         return 0
     vram, discrete = 0, False
+    environment = dict(os.environ)
+    environment.update(env)
+    if sys.platform.startswith('linux') and getattr(sys, 'frozen', False):
+        from bbport_platform import native_environment
+        environment = native_environment(caps, environment)
     try:
         result = subprocess.run([str(caps), '--vram'], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                stderr=subprocess.DEVNULL, text=True, timeout=20, creationflags=no_console())
+                                stderr=subprocess.DEVNULL, text=True, timeout=20, creationflags=no_console(), env=environment)
         size, kind = result.stdout.split()
         vram, discrete = int(size), kind == '1'
     except (OSError, ValueError, subprocess.SubprocessError):
@@ -657,7 +664,9 @@ def main():
                  'extract the port\'s zip again.')
         fail('bb-probe.exe not found: build it with build.sh (MSYS2 CLANG64) or use a packaged build.')
     # Development builds run from the MSYS2 tree: its CLANG64 DLLs (SDL3, FFmpeg, ...).
-    if not (probe.parent / 'SDL3.dll').is_file():
+    if (probe.parent / 'libs').is_dir():
+        env['PATH'] = str(probe.parent / 'libs') + os.pathsep + env.get('PATH', '')
+    elif not (probe.parent / 'SDL3.dll').is_file():
         clang64 = Path(env.get('MSYS2_ROOT', r'C:\msys64')) / 'clang64' / 'bin'
         if clang64.is_dir():
             env['PATH'] = f'{clang64}{os.pathsep}{env.get("PATH", "")}'

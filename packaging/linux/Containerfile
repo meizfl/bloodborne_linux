@@ -43,6 +43,10 @@ RUN bash /tmp/complete-ffmpeg.sh
 ENV PATH="/opt/bb-deps/bin:${PATH}" \
     CMAKE_PREFIX_PATH=/opt/bb-deps PKG_CONFIG_PATH=/opt/bb-deps/lib/pkgconfig \
     LD_LIBRARY_PATH=/opt/bb-deps/lib
+COPY packaging/linux/build-wayland.sh /tmp/build-wayland.sh
+RUN bash /tmp/build-wayland.sh
+COPY packaging/linux/build-desktop-sdl.sh /tmp/build-desktop-sdl.sh
+RUN bash /tmp/build-desktop-sdl.sh
 COPY packaging/build_bootloader.py /tmp/build_bootloader.py
 RUN python /tmp/build_bootloader.py --verify-existing
 WORKDIR /src

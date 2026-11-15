@@ -10,6 +10,10 @@ import sys
 def main():
     if getattr(sys, 'frozen', False):
         sys.path.insert(0, str(Path(sys._MEIPASS) / 'scripts'))
+        if sys.platform.startswith('linux') and not os.environ.get('FONTCONFIG_FILE'):
+            config = str(Path(sys._MEIPASS) / 'assets/fonts/fonts.conf')
+            os.environ['FONTCONFIG_FILE'] = config
+            os.environ['BB_BUNDLED_FONTCONFIG'] = config
     import bbport_platform
     bbport_platform.configure_portable()
     if getattr(sys, 'frozen', False) and not any(

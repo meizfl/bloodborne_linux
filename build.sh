@@ -79,7 +79,7 @@ if ! cmake --build out/gpu --target bbgpu > out/gpu-build.log 2>&1; then
     echo 'GPU library build failed (full log: out/gpu-build.log)' >&2; exit 1
 fi
 # $ORIGIN/gpu: packaged copies keep the library next to the binary without patching it.
-gpu=(-Lout/gpu -lbbgpu -Wl,-rpath,'$ORIGIN/lib' -Wl,-rpath,'$ORIGIN/gpu' -rdynamic)
+gpu=(-Lout/gpu -lbbgpu -Wl,-rpath,'$ORIGIN/libs' -Wl,-rpath,'$ORIGIN/gpu' -rdynamic)
 runtime=(src/runtime*.c)
 # Third-party decoders: compiled once, without this project's -Werror policy.
 atrac9=(third_party/LibAtrac9/C/src/*.c)
@@ -100,7 +100,7 @@ done
 "$CC" "${ldflags[@]}" -std=c11 -O2 -g -Wall -Wextra -Werror -pthread -no-pie "${includes[@]}" -I. -Isrc src/probe.c "${runtime[@]}" src/vulkan_smoke.c "${chalice[@]}" out/libatrac9.a -l"${BB_CXX_RUNTIME:-stdc++}" -ldl -lm "${gpu[@]}" "${libraries[@]}" -o out/bb-probe
 echo "Built $PWD/out/bb-probe"
 # GPU check for run.sh (live_resolution=auto): links only the Vulkan loader.
-"$CC" "${ldflags[@]}" -std=c11 -O2 -Wall -Wextra -Werror "${includes[@]}" tools/gpu_capabilities.c "${libraries[@]}" -Wl,-rpath,'$ORIGIN/lib' -o out/bb-gpu-capabilities
+"$CC" "${ldflags[@]}" -std=c11 -O2 -Wall -Wextra -Werror "${includes[@]}" tools/gpu_capabilities.c "${libraries[@]}" -Wl,-rpath,'$ORIGIN/libs' -o out/bb-gpu-capabilities
 if [[ ${1:-} == --test ]]; then
     "$CXX" "${cxxflags[@]}" -std=c++23 -O2 -g -Wall -Wextra -Werror -Isrc tests/test_lc_platform.cpp src/lc_platform.cpp -ldl -o out/lc-platform-test
     out/lc-platform-test

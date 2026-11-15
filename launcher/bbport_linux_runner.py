@@ -43,6 +43,7 @@ def prepare(port, args=()):
     import linux_start as start
     import patches
     import run
+    from bbport_platform import native_environment
     run.run_script = script
     # `run` is shared with the Windows preparation steps; all files live in the bundle.
     run.PORT = resource_root()
@@ -119,7 +120,7 @@ def prepare(port, args=()):
                     live = '0'
                 else:
                     try:
-                        live = subprocess.check_output([str(caps), '--live-resolution'], text=True).strip()
+                        live = subprocess.check_output([str(caps), '--live-resolution'], text=True, env=native_environment(caps)).strip()
                     except (OSError, subprocess.SubprocessError):
                         live = '0'
             live = '1' if live == '1' else '0'
@@ -157,10 +158,9 @@ def main(port, args=()):
     while True:
         command, overlay, original = prepare(port, args)
         try:
-            env = os.environ.copy()
+            from bbport_platform import native_environment
+            env = native_environment(command[0])
             env['BB_LAUNCHER_MANAGED'] = '1'
-            private = str(Path(command[0]).resolve().parent / 'lib')
-            env['LD_LIBRARY_PATH'] = private + (':' + env['LD_LIBRARY_PATH'] if env.get('LD_LIBRARY_PATH') else '')
             # Keep the embedded Python/temporary bundle alive while native code uses its assets.
             status = subprocess.Popen(command, env=env).wait()
         finally:

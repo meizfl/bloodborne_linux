@@ -10,13 +10,36 @@ import sys
 SYSTEM = re.compile(r'^(ld-linux.*|lib(c|m|pthread|dl|rt|resolv|util|anl)\.so[.\d]*)$')
 
 
+def sdl_dynamic_libraries():
+    """SDL deliberately dlopens desktop/audio libraries, so ldd alone misses them."""
+    headers = list(Path('/tmp/bb-deps/SDL/build').rglob('SDL_build_config.h'))
+    if not headers:
+        raise RuntimeError('SDL build configuration is required to collect its dynamic dependencies')
+    names = set()
+    for header in headers:
+        names.update(re.findall(r'#define\s+\w*DYNAMIC\w*\s+"(lib[^" ]+)"', header.read_text()))
+    search = [Path('/opt/bb-deps/lib'), Path('/usr/lib/x86_64-linux-gnu'), Path('/lib/x86_64-linux-gnu')]
+    for name in sorted(names):
+        # The host owns graphics drivers/OpenGL dispatch; this application uses Vulkan.
+        if SYSTEM.match(name) or name.startswith(('libGL', 'libEGL', 'libGLES', 'libdrm', 'libgbm')):
+            continue
+        path = next((directory / name for directory in search if (directory / name).is_file()), None)
+        if path is None:
+            raise RuntimeError('SDL dynamic dependency was not found: ' + name)
+        yield name, path
+
+
 def package(source, target):
     target.mkdir(parents=True, exist_ok=True)
-    library = target / 'lib'
+    shutil.rmtree(target / 'lib', ignore_errors=True)  # Obsolete package layout.
+    library = target / 'libs'
     shutil.rmtree(library, ignore_errors=True)
     library.mkdir()
     shutil.copy2(source / 'gpu/libbbgpu.so', library / 'libbbgpu.so')
     pending = [library / 'libbbgpu.so']
+    for name, path in sdl_dynamic_libraries():
+        shutil.copy2(path, library / name)
+        pending.append(library / name)
     for name in ('bb-probe', 'bb-gpu-capabilities'):
         shutil.copy2(source / name, target / name)
         pending.append(target / name)
@@ -43,10 +66,17 @@ def package(source, target):
     # Vulkan-Hpp dlopens the unversioned name before the SONAME. Keep it on the
     # same loader as the ELF-linked probe and SDL instead of loading a host copy.
     (library / 'libvulkan.so').symlink_to('libvulkan.so.1')
-    subprocess.run(['patchelf', '--set-rpath', '$ORIGIN/lib', str(target / 'bb-gpu-capabilities')], check=True)
+    subprocess.run(['patchelf', '--set-rpath', '$ORIGIN/libs', str(target / 'bb-gpu-capabilities')], check=True)
     # Do not patchelf the non-PIE loader: GNU symbol-version tables must retain their layout.
     for name in ('bb-probe', 'bb-gpu-capabilities'):
         subprocess.run(['strip', '--strip-debug', str(target / name)], check=True)
+    (target / 'DEPENDENCIES.txt').write_text('\n'.join(sorted(path.name for path in library.iterdir())) + '\n')
+    assets = target / 'data'
+    assets.mkdir(exist_ok=True)
+    for source, name in ((Path('/usr/share/alsa'), 'alsa'), (Path('/usr/share/X11/xkb'), 'xkb'),
+                         (Path('/usr/share/X11/locale'), 'locale')):
+        if source.is_dir():
+            shutil.copytree(source, assets / name, dirs_exist_ok=True)
     (target / 'BUILD.txt').write_text(
         'Debian 11 / glibc 2.31, x86-64. Built with Clang/LLVM 23 and libc++.\n'
         'Vulkan headers 1.4.363, loader 1.4.304; SDL 3.2.10; Boost 1.87.0; OpenSSL 3.5.9.\n'

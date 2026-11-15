@@ -47,6 +47,7 @@ def query(port, env=None, refresh=False):
     port = Path(port)
     env = environment(port) if env is None else env
     exe = executable(port)
+    env = host.native_environment(exe, env)
     runtime = exe.parent / DLL['dx12']
     def stamp(path):
         try:

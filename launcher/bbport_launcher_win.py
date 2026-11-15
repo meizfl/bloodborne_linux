@@ -5521,12 +5521,12 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
     def detect_hardware(self):
         filename = 'bb-gpu-capabilities.exe' if WINDOWS else 'bb-gpu-capabilities'
         exe = host.runtime_file(PORT_DIR, filename)
-        env = dict(os.environ)
+        env = host.native_environment(exe)
         for item in str(self.app.get('extra_env', '')).split():
             if '=' in item:
                 key, value = item.split('=', 1)
                 env[key] = value
-        if WINDOWS and not (exe.parent / 'SDL3.dll').is_file():
+        if WINDOWS and not (exe.parent / 'SDL3.dll').is_file() and not (exe.parent / 'libs/SDL3.dll').is_file():
             clang64 = Path(os.environ.get('MSYS2_ROOT', r'C:\msys64')) / 'clang64' / 'bin'
             env['PATH'] = f'{clang64}{os.pathsep}{env.get("PATH", "")}'
         text = _('• Graphics card: not checked', '• Видеокарта: не проверена')

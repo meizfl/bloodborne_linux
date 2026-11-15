@@ -3,7 +3,7 @@
 The launcher is one executable, with Python, Tk, Pillow, fonts, artwork and game
 preparation code embedded. Players do not need Python or shell launch wrappers.
 PyInstaller extracts its private payload to an OS temporary directory while it runs.
-The native game runtime is a separate directory; decrypted game files are not distributed.
+The native game runtime and its `libs/` dependency closure are a separate directory; decrypted game files are not distributed.
 
 ```text
 Bloodborne/
@@ -11,7 +11,7 @@ Bloodborne/
   game_runtime/
     bb-probe                  # .exe on Windows
     bb-gpu-capabilities       # .exe on Windows
-    lib/                      # Linux shared libraries; Windows DLLs beside its EXEs
+    libs/                      # shared libraries / Windows DLLs
   Game/
     eboot.bin
     sce_sys/
@@ -44,7 +44,8 @@ python3 packaging/linux/build.py --jobs 4
 ```
 
 Outputs: `dist/debian11/BloodborneLauncher` and `dist/debian11/game_runtime/`.
-Copy them beside `Game/`. No `.py`, `.sh` or `_internal/` directory is needed there.
+Copy them beside `Game/`. Runtime ELF libraries and SDL audio/window/input libraries
+are included in `game_runtime/libs/`; `DEPENDENCIES.txt` records the files. No `.py`, `.sh` or `_internal/` directory is needed there.
 The first build downloads and compiles dependencies; Podman caches the build image
 and the `bbport-debian11-build` volume retains incremental native build files.
 Use `--output /absolute/path` to choose another output directory.
@@ -96,8 +97,9 @@ bootloader is rejected.
 
 For the native Windows runtime, install MSYS2 and the CLANG64 dependencies listed in
 [windows/README.md](windows/README.md), then run `bash build.sh` in CLANG64.
-Copy `out/bb-probe.exe`, `out/bb-gpu-capabilities.exe` and their runtime DLLs to
-`game_runtime/`. The existing `packaging/windows/package.sh` automates DLL collection
+Copy `out/bb-probe.exe` and `out/bb-gpu-capabilities.exe` to `game_runtime/`,
+and their runtime DLLs to `game_runtime/libs/`. The launcher adds this directory
+to the native processes' DLL search path. The existing `packaging/windows/package.sh` automates DLL collection
 for the original full package; its `bin/` contents can supply `game_runtime/`.
 Linux binaries cannot serve as the Windows runtime. Windows packages must be built
 and checked on Windows; the CI workflow does this for the launcher.

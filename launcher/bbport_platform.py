@@ -90,15 +90,37 @@ def open_path(path, reveal=False):
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=desktop_environment())
 
 
-def desktop_environment():
+def desktop_environment(environment=None):
     """External desktop apps must not inherit PyInstaller's private libraries."""
-    env = os.environ.copy()
+    env = dict(os.environ if environment is None else environment)
+    if env.get('BB_BUNDLED_FONTCONFIG') == env.get('FONTCONFIG_FILE'):
+        env.pop('FONTCONFIG_FILE', None)
+    env.pop('BB_BUNDLED_FONTCONFIG', None)
     if getattr(sys, 'frozen', False):
         original = env.get('LD_LIBRARY_PATH_ORIG')
         if original is None:
             env.pop('LD_LIBRARY_PATH', None)
         else:
             env['LD_LIBRARY_PATH'] = original
+    return env
+
+
+def native_environment(executable, environment=None):
+    """Keep Python's bundled C++ libraries away from system GPU driver plugins."""
+    env = desktop_environment(environment)
+    private = str(Path(executable).resolve().parent / 'libs')
+    if family() == 'windows':
+        env['PATH'] = private + os.pathsep + env.get('PATH', '')
+        return env
+    env['LD_LIBRARY_PATH'] = private + (':' + env['LD_LIBRARY_PATH'] if env.get('LD_LIBRARY_PATH') else '')
+    data = Path(executable).resolve().parent / 'data'
+    if (data / 'alsa/alsa.conf').is_file():
+        env.setdefault('ALSA_CONFIG_PATH', str(data / 'alsa/alsa.conf'))
+        env.setdefault('ALSA_CONFIG_DIR', str(data / 'alsa'))
+    if (data / 'xkb').is_dir():
+        env.setdefault('XKB_CONFIG_ROOT', str(data / 'xkb'))
+    if (data / 'locale').is_dir():
+        env.setdefault('XLOCALEDIR', str(data / 'locale'))
     return env
 
 
