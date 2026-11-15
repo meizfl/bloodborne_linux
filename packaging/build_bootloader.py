@@ -25,8 +25,15 @@ def main():
         env = dict(os.environ, CC='clang', CXX='clang++',
                    PYINSTALLER_COMPILE_BOOTLOADER='1', PYINSTALLER_BOOTLOADER_WAF_ARGS='--clang',
                    LDFLAGS='-fuse-ld=lld')
-        subprocess.run([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--no-cache-dir',
-                        '--no-binary=PyInstaller', 'PyInstaller==6.16.0'], env=env, check=True)
+        result = subprocess.run([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--no-cache-dir',
+                                 '--no-binary=PyInstaller', 'PyInstaller==6.16.0'], env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        print(result.stdout, flush=True)
+        if result.returncode:
+            if os.environ.get('GITHUB_ACTIONS') == 'true':
+                details = result.stdout[-16000:].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+                print('::error title=Clang bootloader build failed::' + details, flush=True)
+            raise RuntimeError('Clang bootloader compilation failed; see compiler output above.')
     import PyInstaller
     root = Path(PyInstaller.__file__).parent / 'bootloader'
     platform = 'Windows-64bit-intel' if sys.platform == 'win32' else 'Linux-64bit-intel'

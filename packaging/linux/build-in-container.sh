@@ -35,7 +35,7 @@ environment=$({
         /opt/bb-deps/include/SDL3/SDL_version.h
 } | sha256sum | cut -d' ' -f1)
 if [[ ! -f out/.build-environment || $(cat out/.build-environment) != "$environment" ]]; then
-    rm -rf out/gpu
+    rm -rf out/gpu out/atrac9 out/libatrac9.a
     mkdir -p out
     printf '%s\n' "$environment" > out/.build-environment
 fi
