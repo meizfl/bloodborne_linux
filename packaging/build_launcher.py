@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 """Build the shared launcher on Windows or Linux. Does not build or bundle the game."""
 import argparse
+import hashlib
+import json
 import os
 import re
 from pathlib import Path
@@ -22,6 +24,19 @@ def copy_resources(target):
         'from pathlib import Path\nimport sys\n'
         'sys.path.insert(0, str(Path(__file__).resolve().parent / "launcher"))\n'
         'from bloodborne_launcher import main\nraise SystemExit(main())\n', encoding='utf-8')
+
+
+def require_clang_bootloader():
+    import PyInstaller
+    platform = 'Windows-64bit-intel' if sys.platform == 'win32' else 'Linux-64bit-intel'
+    root = Path(PyInstaller.__file__).parent / 'bootloader' / platform
+    name = 'runw.exe' if sys.platform == 'win32' else 'run'
+    marker = root / 'bb-clang-build.json'
+    if not marker.is_file():
+        raise RuntimeError('Build the Clang bootloader first: python packaging/build_bootloader.py')
+    info = json.loads(marker.read_text(encoding='utf-8'))
+    if 'clang' not in info.get('compiler', '').lower() or info.get('files', {}).get(name) != hashlib.sha256((root / name).read_bytes()).hexdigest():
+        raise RuntimeError('Clang bootloader verification failed; rerun packaging/build_bootloader.py')
 
 
 def linux_tk_libraries():
@@ -55,6 +70,7 @@ def main(argv=None):
         copy_resources(source)
         print(shutil.make_archive(str(source), 'zip', destination, source.name))
         return 0
+    require_clang_bootloader()
     host = 'windows' if sys.platform == 'win32' else 'linux'
     name = 'Bloodborne' if host == 'windows' else 'BloodborneLauncher'
     work = ROOT / 'out/launcher-build' / host

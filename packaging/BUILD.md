@@ -83,14 +83,16 @@ $env:CXX = "clang++"
 $env:LDFLAGS = "-fuse-ld=lld"
 $env:PYINSTALLER_COMPILE_BOOTLOADER = "1"
 $env:PYINSTALLER_BOOTLOADER_WAF_ARGS = "--clang"
-.\.venv\Scripts\python -m pip install --force-reinstall --no-cache-dir --no-binary=PyInstaller PyInstaller==6.16.0
+.\.venv\Scripts\python packaging/build_bootloader.py
 .\.venv\Scripts\python packaging/test_launcher.py
 .\.venv\Scripts\python packaging/build_launcher.py --check --ui-check
 ```
 
 Output: `dist/launcher/windows/Bloodborne.exe`. This contains the launcher and its
 preparation scripts, not the native runtime or proprietary game files.
-`--onedir` is available for the legacy folder package.
+`--onedir` is available for the legacy folder package. The packager verifies a
+recorded compiler ID and hashes of the Clang-built bootloader; a stock prebuilt
+bootloader is rejected.
 
 For the native Windows runtime, install MSYS2 and the CLANG64 dependencies listed in
 [windows/README.md](windows/README.md), then run `bash build.sh` in CLANG64.

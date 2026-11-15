@@ -38,6 +38,7 @@ python -m venv out/launcher-venv
 # Windows: out\launcher-venv\Scripts\activate
 # Linux:   source out/launcher-venv/bin/activate
 python -m pip install -r packaging/launcher-requirements.txt
+python packaging/build_bootloader.py
 python packaging/build_launcher.py --check --ui-check
 ```
 
@@ -77,6 +78,7 @@ the previous GTK UI. The GTK source entry point is unchanged.
 ```sh
 python -m unittest discover -s tests -p test_launcher_platform.py
 python launcher/bloodborne_launcher.py --smoke-test
+python packaging/build_bootloader.py
 python packaging/build_launcher.py --check --ui-check
 ```
 

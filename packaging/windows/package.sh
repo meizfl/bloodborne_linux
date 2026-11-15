@@ -57,6 +57,7 @@ if [[ ! -x out/pyenv/Scripts/python.exe ]]; then
 fi
 # Pillow draws the launcher's look (launcher/bbport_theme.py) and scales the cover art.
 out/pyenv/Scripts/python.exe -m pip install -q --disable-pip-version-check pyinstaller pillow
+out/pyenv/Scripts/python.exe packaging/build_bootloader.py
 echo "Freezing the launcher with Python $(minor_of out/pyenv/Scripts/python.exe)," \
      "PyInstaller $(out/pyenv/Scripts/python.exe -m PyInstaller --version | tr -d '\r')"
 # The scripts run inside Bloodborne.exe (--script): the standard modules they import come along.

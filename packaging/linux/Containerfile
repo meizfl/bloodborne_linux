@@ -43,4 +43,6 @@ RUN bash /tmp/complete-ffmpeg.sh
 ENV PATH="/opt/bb-deps/bin:${PATH}" \
     CMAKE_PREFIX_PATH=/opt/bb-deps PKG_CONFIG_PATH=/opt/bb-deps/lib/pkgconfig \
     LD_LIBRARY_PATH=/opt/bb-deps/lib
+COPY packaging/build_bootloader.py /tmp/build_bootloader.py
+RUN python /tmp/build_bootloader.py --verify-existing
 WORKDIR /src
