@@ -22,9 +22,13 @@ def main():
     if 'clang' not in version.lower():
         parser.error('The selected compiler is not Clang.')
     if not args.verify_existing:
-        env = dict(os.environ, CC='clang', CXX='clang++',
-                   PYINSTALLER_COMPILE_BOOTLOADER='1', PYINSTALLER_BOOTLOADER_WAF_ARGS='--clang',
+        env = dict(os.environ, PYINSTALLER_COMPILE_BOOTLOADER='1', PYINSTALLER_BOOTLOADER_WAF_ARGS='--clang',
                    LDFLAGS='-fuse-ld=lld')
+        # Waf treats CC from the environment as an already-resolved executable on
+        # Windows. Let its --clang discovery resolve PATH and paths with spaces.
+        env.pop('CC', None)
+        env.pop('CXX', None)
+        env['PATH'] = str(Path(compiler).parent) + os.pathsep + env.get('PATH', '')
         result = subprocess.run([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--no-cache-dir',
                                  '--no-binary=PyInstaller', 'PyInstaller==6.16.0'], env=env,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
