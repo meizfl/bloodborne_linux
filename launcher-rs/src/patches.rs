@@ -1,4 +1,5 @@
 //! shadPS4/GoldHEN literal patch compiler. Mask/scan patches are deliberately rejected.
+pub mod display;
 use crate::formats::Elf;
 use quick_xml::{
     events::{BytesStart, Event},
@@ -28,9 +29,12 @@ fn attributes(e: &BytesStart<'_>, reader: &Reader<&[u8]>) -> Result<BTreeMap<Str
                 std::str::from_utf8(a.key.as_ref())
                     .map_err(|e| e.to_string())?
                     .to_owned(),
-                a.decode_and_unescape_value(reader.decoder())
-                    .map_err(|e| e.to_string())?
-                    .into_owned(),
+                a.decoded_and_normalized_value(
+                    quick_xml::XmlVersion::Explicit1_0,
+                    reader.decoder(),
+                )
+                .map_err(|e| e.to_string())?
+                .into_owned(),
             ))
         })
         .collect()
@@ -165,6 +169,99 @@ pub fn compile(
     }
     Ok(writes)
 }
+/// The embedded plans contain code generated from the existing source's own
+/// assembler and signatures. No game dump is used to create these resources.
+pub fn compile_static(names: &[String], elf: &Elf) -> Result<Vec<Write>> {
+    let plans: serde_json::Value =
+        serde_json::from_str(include_str!("../resources/patch-plans.json"))
+            .map_err(|e| e.to_string())?;
+    let mut writes = Vec::new();
+    for name in names {
+        let plan = plans
+            .get(name)
+            .ok_or_else(|| format!("Unknown native patch: {name}"))?;
+        if let (Some(code_end), Some(cave_end)) =
+            (plan["code_end"].as_u64(), plan["cave_end"].as_u64())
+        {
+            if !elf
+                .segments
+                .iter()
+                .any(|p| p.kind == 1 && p.address + p.memory_size == code_end)
+                || elf.segments.iter().any(|p| {
+                    p.kind == 1
+                        && p.address + p.memory_size != code_end
+                        && p.address < cave_end
+                        && p.address + p.memory_size > code_end
+                })
+            {
+                return Err(format!("{name}: unexpected code segment layout"));
+            }
+        }
+        let decode = |item: &serde_json::Value| -> Result<Write> {
+            let offset = item["offset"]
+                .as_u64()
+                .ok_or("Invalid native patch address")?;
+            let bytes = item["bytes"].as_str().ok_or("Missing native patch bytes")?;
+            let mut line = BTreeMap::new();
+            line.insert("Type".into(), "bytes".into());
+            line.insert("Value".into(), bytes.into());
+            Ok(Write {
+                offset,
+                data: encode(&line)?,
+            })
+        };
+        for guard in plan["guards"]
+            .as_array()
+            .ok_or("Missing native patch guards")?
+        {
+            let guard = decode(guard)?;
+            let end = guard
+                .offset
+                .checked_add(guard.data.len() as u64)
+                .ok_or("Native patch range overflow")?;
+            let mut actual = vec![0; guard.data.len()];
+            for p in elf.segments.iter().filter(|p| p.kind == 1) {
+                let low = guard.offset.max(p.address);
+                let high = end.min(p.address + p.file_size);
+                if low < high {
+                    actual[(low - guard.offset) as usize..(high - guard.offset) as usize]
+                        .copy_from_slice(crate::formats::span(
+                            &elf.bytes,
+                            p.offset + low - p.address,
+                            high - low,
+                        )?);
+                }
+            }
+            if actual != guard.data {
+                return Err(format!(
+                    "{name}: original instruction signature changed at {:#x}",
+                    guard.offset
+                ));
+            }
+        }
+        for item in plan["writes"]
+            .as_array()
+            .ok_or("Missing native patch writes")?
+        {
+            let write = decode(item)?;
+            let end = write
+                .offset
+                .checked_add(write.data.len() as u64)
+                .ok_or("Native patch range overflow")?;
+            if !elf.segments.iter().any(|p| {
+                p.kind == 1
+                    && p.address <= write.offset
+                    && end <= ((p.address + p.memory_size + 4095) & !4095)
+            }) {
+                return Err(format!(
+                    "{name}: native patch is outside mapped image pages"
+                ));
+            }
+            writes.push(write);
+        }
+    }
+    Ok(writes)
+}
 pub fn blob(writes: &[Write]) -> Vec<u8> {
     let mut out = b"BBPATCH2".to_vec();
     out.extend_from_slice(&BASE.to_le_bytes());
@@ -221,6 +318,23 @@ pub fn names(patches: &[Patch], version: &str) -> BTreeSet<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_code_patches_refuse_a_different_executable() {
+        let mut data = vec![0; 120];
+        data[..7].copy_from_slice(b"\x7fELF\x02\x01\x01");
+        data[18..20].copy_from_slice(&62u16.to_le_bytes());
+        data[32..40].copy_from_slice(&64u64.to_le_bytes());
+        data[54..56].copy_from_slice(&56u16.to_le_bytes());
+        data[56..58].copy_from_slice(&1u16.to_le_bytes());
+        data[64..68].copy_from_slice(&1u32.to_le_bytes());
+        data[68..72].copy_from_slice(&5u32.to_le_bytes());
+        data[96..104].copy_from_slice(&120u64.to_le_bytes());
+        data[104..112].copy_from_slice(&0x50d96dcu64.to_le_bytes());
+        let elf = Elf::parse(&data).unwrap();
+        let error = compile_static(&["quit_menu".into()], &elf).unwrap_err();
+        assert!(error.contains("instruction signature changed"));
+        assert_eq!(elf.bytes, data);
+    }
     #[test]
     fn literals_entities_and_unsupported_scans() {
         let p=parse(r#"<Patch><Metadata Name="A &amp; B" AppVer="01.09"><PatchList><Line Type="bytes32" Address="0x400010" Value="0x12345678"/><Line Type="utf16" Address="0x400020" Value="Охотник"/></PatchList></Metadata></Patch>"#).unwrap();

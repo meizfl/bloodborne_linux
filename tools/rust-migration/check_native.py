@@ -2,6 +2,7 @@
 """Development-only golden comparison; never shipped/executed by the launcher."""
 import argparse
 import hashlib
+import importlib
 import json
 from pathlib import Path
 import struct
@@ -41,7 +42,7 @@ def main():
         except ValueError:
             rejected.append(name)
     cases = {'all_valid': valid, **patches.PATCH_GROUPS}
-    result = {'patches': {}, 'prepared': {}, 'rejected': {}}
+    result = {'patches': {}, 'prepared': {}, 'rejected': {}, 'native_plans': {}, 'resolution': {}}
     for index, name in enumerate(rejected):
         output = args.output / f'rejected-{index}.bin'
         output.unlink(missing_ok=True)
@@ -62,6 +63,35 @@ def main():
         fingerprint_equal = report['fingerprint'] == expected_hash
         result['patches'][case] = {'writes': len(expected), 'binary_equal': equal,
                                    'fingerprint_equal': fingerprint_equal}
+    plans = json.loads((ROOT / 'launcher-rs/resources/patch-plans.json').read_text())
+    for name in plans:
+        module = importlib.import_module(name)
+        module.check_original(lambda start, end: patches.eboot_bytes(elf, start, end))
+        expected = module.code_writes()
+        blob = struct.pack('<8sQQ', b'BBPATCH2', patches.EBOOT_BASE, len(expected))
+        for offset, data in expected:
+            blob += struct.pack('<QQ', offset, len(data)) + data
+        output = args.output / f'native-{name}.bin'
+        subprocess.run([str(args.binary.resolve()), '--compile-static-patches', str(elf_path),
+                        str(output), name], text=True, capture_output=True, check=True)
+        result['native_plans'][name] = output.read_bytes() == blob
+    for render, output, sharp in [((1280, 720), (1920, 1080), False),
+                                  ((1916, 1078), (3840, 2160), True),
+                                  ((1720, 720), (3440, 1440), False),
+                                  ((2560, 720), (5120, 1440), True)]:
+        viewport = patches.ui_viewport(output, {'sharp_ui': '1' if sharp else '0'})
+        expected = patches.resolution_writes(xml, render, '01.09', segments, viewport)
+        if patches.hud_canvas(output) != patches.OUTPUT_SIZE:
+            expected += patches.ultrawide_writes(xml, output, '01.09', segments)
+        blob = struct.pack('<8sQQ', b'BBPATCH2', patches.EBOOT_BASE, len(expected))
+        for offset, data in expected:
+            blob += struct.pack('<QQ', offset, len(data)) + data
+        label = f'{render[0]}x{render[1]}-{output[0]}x{output[1]}-sharp{int(sharp)}'
+        target = args.output / (label + '.bin')
+        subprocess.run([str(args.binary.resolve()), '--compile-resolution-patches', str(elf_path), str(xml),
+                        str(target), f'{render[0]}x{render[1]}', f'{output[0]}x{output[1]}', str(int(sharp))],
+                       text=True, capture_output=True, check=True)
+        result['resolution'][label] = target.read_bytes() == blob
     if args.reference_prepared:
         for name in ('boot.bin', 'boot-linked.bin', 'eboot.elf', 'entry.bin'):
             a, b = args.prepared / name, args.reference_prepared / name
@@ -71,7 +101,8 @@ def main():
         for name in ('bindings', 'imports', 'fs_loads_patched', 'cpu_compat', 'red_zone'):
             result['prepared']['report:' + name] = a[name] == b[name]
     success = (all(r['binary_equal'] and r['fingerprint_equal'] for r in result['patches'].values())
-               and all(result['prepared'].values()) and all(result['rejected'].values()))
+               and all(result['prepared'].values()) and all(result['rejected'].values())
+               and all(result['native_plans'].values()) and all(result['resolution'].values()))
     result['passed'] = success
     (args.output / 'native-comparison.json').write_text(json.dumps(result, indent=2))
     print(json.dumps(result))

@@ -21,7 +21,14 @@ Implemented foundations:
   against the reference, including the combined legacy-CPU/Windows profile.
 - Literal XML patch compilation and original-code fingerprinting: all 2,983
   valid built-in writes match the reference; out-of-image patches are rejected.
+- Guarded native plans for Quit to Desktop, PC Settings, Rebirth, cloth, foliage,
+  jumps and effect timing. Their eight code-write outputs match the reference.
+- Render/output/HUD sizes, Sharp UI and ultrawide patch rewriting; four native,
+  4K and ultrawide output cases match the reference byte for byte.
 - Mod discovery, ordering, case-insensitive paths and temporary read-only views.
+- Keyboard/mouse/controller input.ini model, combinations, conflict detection,
+  Dark Souls III layout and one-shot capture state. Eight read/rewrite/layout/mouse
+  cases match the Python reference; capture GUI wiring is still in progress.
 - Save title/slot/name inspection, compatible ZIP backups and CRC/SHA-256
   verification. Restore/import UI is not connected yet.
 - Linux single-file toolkit/dependency embedding and native Wayland startup
@@ -32,13 +39,19 @@ Still required before switching the production entry point:
 - Complete behavior parity for every callback, dialog and dynamic view.
 - Complete game preparation, patching, mods and process lifecycle.
 - Account/online, saves, trophies, input mapping, hardware and update workflows.
-- Translated dynamic dialogs, DPI/window resizing and Windows native behavior.
+- Remaining source languages (Arabic, Spanish, Portuguese, French, German,
+  Italian, Polish, Turkish, Chinese, Japanese and Korean), translated dynamic
+  dialogs, DPI/window resizing and Windows native behavior.
 - Windows toolkit packaging, full license audit and Windows/Linux release CI checks.
+  A native-core CI workflow is present; Windows cross-target checking succeeds,
+  but Windows GUI/runtime execution has not yet been validated.
 
 Development commands use `packaging/linux/Containerfile.rust-launcher` after
 building the existing patched Tk preview image. `--check-tk`, `--check-ui`,
 `--snapshot-ui DIRECTORY`, `--inspect-game DIRECTORY`, and
 `--prepare-game GAME_DIRECTORY OUTPUT_DIRECTORY` exercise the port.
+`--check-interactions` drives real Tk help/hover/combobox callbacks.
+`--inspect-backup ARCHIVE` verifies compatible ZIP backups.
 `--preview-ui` is a development preview. Unported callbacks are explicitly
 reported, not treated as implemented functionality.
 
@@ -70,3 +83,14 @@ Do not distribute this preview as the finished launcher.
 fingerprints, prepared images and CPU/red-zone reports with the reference.
 It accepts a binary, a prepared output directory, `--reference-prepared` and
 `--output`; it requires local game preparation outputs but never distributes them.
+
+`tools/rust-migration/export_patch_plans.py` exports the existing source's own
+literal machine-code plans and signature guards without opening any game files.
+Rust checks those guards and mapped page bounds before writing the patch output.
+The in-game text/asset layers needed by some menu features are still part of the
+remaining runtime migration; exported code plans alone do not finish those features.
+
+`tools/rust-migration/check_input.py` compares input.ini reading and editing,
+including secondary controller bindings, whitespace/tags, BOM, layout replacement,
+and mouse settings. Its fixtures are synthetic or the public default configuration.
+`export_input_spec.py` exports the source's own key names, aliases and defaults.

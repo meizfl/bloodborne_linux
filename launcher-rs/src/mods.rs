@@ -1,4 +1,6 @@
 //! Loose asset mods. Source games and mod folders are always read only.
+#[cfg(windows)]
+mod junction;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 type Result<T> = std::result::Result<T, String>;
@@ -206,13 +208,7 @@ fn link(destination: &Path, source: &Path) -> Result<()> {
     #[cfg(windows)]
     {
         if source.is_dir() {
-            // Materialized directories need no Windows Developer Mode privilege.
-            // File contents are hard-linked; originals are never overwritten.
-            std::fs::create_dir(destination).map_err(|e| e.to_string())?;
-            for p in entries(source)? {
-                link(&destination.join(p.file_name().unwrap()), &p)?;
-            }
-            Ok(())
+            junction::create(source, destination)
         } else {
             std::fs::hard_link(source, destination)
                 .or_else(|_| std::fs::copy(source, destination).map(|_| ()))
@@ -220,14 +216,35 @@ fn link(destination: &Path, source: &Path) -> Result<()> {
         }
     }
 }
+fn directory_link(metadata: &std::fs::Metadata) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        metadata.file_attributes() & 0x400 != 0
+    }
+    #[cfg(unix)]
+    {
+        metadata.file_type().is_symlink()
+    }
+}
+fn remove_directory_link(path: &Path) -> Result<()> {
+    #[cfg(windows)]
+    {
+        std::fs::remove_dir(path).map_err(|e| e.to_string())
+    }
+    #[cfg(unix)]
+    {
+        std::fs::remove_file(path).map_err(|e| e.to_string())
+    }
+}
 fn expand(directory: &Path) -> Result<()> {
     match std::fs::symlink_metadata(directory) {
-        Ok(m) if m.file_type().is_symlink() => {
+        Ok(m) if directory_link(&m) => {
             let target = std::fs::canonicalize(directory).map_err(|e| e.to_string())?;
             if !target.is_dir() {
                 return Err(format!("File/directory conflict: {}", directory.display()));
             }
-            std::fs::remove_file(directory).map_err(|e| e.to_string())?;
+            remove_directory_link(directory)?;
             std::fs::create_dir(directory).map_err(|e| e.to_string())?;
             for p in entries(&target)? {
                 link(&directory.join(p.file_name().unwrap()), &p)?;
@@ -284,6 +301,24 @@ pub fn build(game: &Path, out: &Path, mods: &[(String, PathBuf)]) -> Result<Over
         });
     }
     std::fs::create_dir_all(out).map_err(|e| e.to_string())?;
+    #[cfg(windows)]
+    let placement = {
+        let canonical_out = std::fs::canonicalize(out).map_err(|e| e.to_string())?;
+        let prefix = |p: &Path| {
+            p.components()
+                .next()
+                .map(|c| c.as_os_str().to_string_lossy().to_lowercase())
+        };
+        if prefix(&canonical_out) != prefix(&game) {
+            game.parent()
+                .ok_or("Game has no parent directory")?
+                .to_path_buf()
+        } else {
+            canonical_out
+        }
+    };
+    #[cfg(windows)]
+    let out = placement.as_path();
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|e| e.to_string())?
@@ -348,6 +383,8 @@ mod tests {
             std::fs::create_dir_all(p).unwrap();
         }
         std::fs::write(game.join("dvdroot_ps4/chr/player.bin"), b"original").unwrap();
+        std::fs::create_dir_all(game.join("sce_sys")).unwrap();
+        std::fs::write(game.join("sce_sys/untouched.bin"), b"keep me").unwrap();
         std::fs::write(m1.join("CHR/PLAYER.bin"), b"first").unwrap();
         std::fs::write(m2.join("chr/player.bin"), b"last").unwrap();
         let mods = vec![("one".into(), m1.clone()), ("two".into(), m2.clone())];
@@ -360,6 +397,10 @@ mod tests {
         assert_eq!(view.conflicts.len(), 1);
         drop(view);
         assert!(!path.exists());
+        assert_eq!(
+            std::fs::read(game.join("sce_sys/untouched.bin")).unwrap(),
+            b"keep me"
+        );
         assert_eq!(
             std::fs::read(game.join("dvdroot_ps4/chr/player.bin")).unwrap(),
             b"original"

@@ -1,4 +1,5 @@
-//! The reference launcher supports Russian and English, with the same locale order.
+//! Initial Russian/English resource selection. The remaining source languages
+//! are tracked in MIGRATION.md; locale precedence matches the existing launcher.
 use std::path::Path;
 pub fn select(settings: &Path) -> Result<String, String> {
     let mut requested = std::env::var("BB_UI_LANGUAGE").unwrap_or_default();

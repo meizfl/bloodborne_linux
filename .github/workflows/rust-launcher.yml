@@ -1,0 +1,44 @@
+name: Rust launcher migration
+on:
+  push:
+    paths: ['launcher-rs/**', 'launcher/assets/fonts/**', 'patches/redzone.json', 'tools/legacy-cpu-plan.json', '.github/workflows/rust-launcher.yml']
+  pull_request:
+    paths: ['launcher-rs/**', 'launcher/assets/fonts/**', 'patches/redzone.json', 'tools/legacy-cpu-plan.json', '.github/workflows/rust-launcher.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-core:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            rustflags: '-C linker=clang -C link-arg=-fuse-ld=lld'
+          - os: windows-2022
+            rustflags: '-C linker=lld-link'
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: launcher-rs
+    env:
+      RUSTFLAGS: ${{ matrix.rustflags }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Clang/LLD
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang lld
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - name: Add LLVM to Windows PATH
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: '"C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append'
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.85.1 --profile minimal --component rustfmt
+      - name: Formatting
+        run: cargo +1.85.1 fmt --check
+      - name: Native core tests
+        run: cargo +1.85.1 test --locked
+      # This checks native Rust code, not graphical/release compatibility. The
+      # Linux release is built and ABI-checked separately in Debian 11/Podman.

@@ -6,4 +6,5 @@ RUN curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs -o /tmp/rustup-in
 ENV PATH="/opt/cargo/bin:${PATH}" \
     CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang \
     RUSTFLAGS="-C link-arg=-fuse-ld=lld"
+RUN rustup target add x86_64-pc-windows-msvc
 WORKDIR /src/launcher-rs

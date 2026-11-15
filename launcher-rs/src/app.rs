@@ -278,6 +278,68 @@ impl App {
                 .ok_or("Missing navigation target")?;
             return self.navigate(page);
         }
+        if name == "HelpMixin.topic_card.<locals>.toggle" {
+            let body = args["body"].as_str().ok_or("Missing help card body")?;
+            let arrow = args["arrow"].as_str().ok_or("Missing help card arrow")?;
+            let shown = self.ui.tk.call(&["winfo", "ismapped", body])? == "1";
+            if shown {
+                self.ui.tk.call(&["pack", "forget", body])?;
+            } else {
+                let dpi = self.ui.manifest["dpi"].as_f64().unwrap_or(1.0);
+                let padx = format!(
+                    "{} {}",
+                    (52.0 * dpi).round() as i32,
+                    (18.0 * dpi).round() as i32
+                );
+                let pady = format!("0 {}", (12.0 * dpi).round() as i32);
+                self.ui
+                    .tk
+                    .call(&["pack", body, "-fill", "x", "-padx", &padx, "-pady", &pady])?;
+            }
+            self.ui
+                .tk
+                .call(&[arrow, "configure", "-text", if shown { "›" } else { "⌄" }])?;
+            return Ok(());
+        }
+        if name == "Launcher.link_row.<locals>.<lambda>"
+            && source.contains("command() if command else self.show(page)")
+            && args["command"].is_null()
+        {
+            if let Some(page) = args["page"].as_str() {
+                return self.navigate(page);
+            }
+        }
+        if source.contains(".bind('<Enter>'") || source.contains(".bind('<Leave>'") {
+            let widget = args
+                .get("w")
+                .or_else(|| args.get("m"))
+                .and_then(Value::as_str)
+                .or_else(|| metadata["defaults"][0].as_str())
+                .filter(|w| w.starts_with('.'));
+            if let Some(widget) = widget {
+                let mut command = vec![widget.to_owned(), "configure".into()];
+                for (fragment, option, color) in [
+                    ("bg=LINE", "-background", "#25272b"),
+                    ("bg=CARD", "-background", "#16171a"),
+                    ("fg=TEXT", "-foreground", "#d9d4ca"),
+                    ("fg=MUTED", "-foreground", "#8a8c90"),
+                    ("fg=theme.TEXT", "-foreground", "#d9d4ca"),
+                    ("fg=theme.MUTED", "-foreground", "#8a8c90"),
+                    ("fg=theme.GOLD_LIGHT", "-foreground", "#c2a878"),
+                ] {
+                    if source.contains(&format!("{fragment},"))
+                        || source.contains(&format!("{fragment})"))
+                    {
+                        command.push(option.into());
+                        command.push(color.into());
+                    }
+                }
+                if command.len() > 2 {
+                    self.ui.tk.call(&command)?;
+                    return Ok(());
+                }
+            }
+        }
         if name == "Launcher.wheel" || name == "Launcher.combobox_wheel" {
             return self.wheel(&event.arguments);
         }
@@ -398,6 +460,75 @@ impl App {
             self.dispatch(event)?;
         }
         Ok(())
+    }
+    /// Development QA drives native Tk callbacks, not mirrored mock handlers.
+    pub fn check_interactions(&mut self) -> Result<Value> {
+        self.navigate("help")?;
+        self.ui.tk.call(&["update"])?;
+        self.drain()?;
+        let (callback, args) = self.ui.manifest["callbacks"]
+            .as_object()
+            .unwrap()
+            .iter()
+            .find(|(_, v)| v["name"] == "HelpMixin.topic_card.<locals>.toggle")
+            .map(|(k, v)| (k.clone(), v["arguments"].clone()))
+            .ok_or("No help toggle")?;
+        let body = args["body"].as_str().unwrap();
+        let arrow = args["arrow"].as_str().unwrap();
+        for (expected, marker) in [("pack", "⌄"), ("", "›")] {
+            self.ui.tk.call(&[&callback])?;
+            self.drain()?;
+            self.ui.tk.call(&["update"])?;
+            self.drain()?;
+            if self.ui.tk.call(&["winfo", "manager", body])? != expected
+                || self.ui.tk.call(&[arrow, "cget", "-text"])? != marker
+            {
+                return Err("Help toggle did not update native widgets".into());
+            }
+        }
+        let (callback, widget) = self.ui.manifest["callbacks"]
+            .as_object()
+            .unwrap()
+            .iter()
+            .find(|(_, v)| {
+                v["name"] == "Launcher.build_controls.<locals>.<lambda>"
+                    && v["source"]
+                        .as_str()
+                        .unwrap_or("")
+                        .contains("m.configure(bg=LINE, fg=TEXT)")
+            })
+            .map(|(k, v)| (k.clone(), v["defaults"][0].as_str().unwrap().to_owned()))
+            .ok_or("No control hover")?;
+        self.ui.tk.call(&[&callback])?;
+        self.drain()?;
+        if self.ui.tk.call(&[widget.as_str(), "cget", "-background"])? != "#25272b" {
+            return Err("Control hover did not update its native widget".into());
+        }
+        let (callback, args) = self.ui.manifest["callbacks"]
+            .as_object()
+            .unwrap()
+            .iter()
+            .find(|(_, v)| {
+                v["name"] == "Launcher.choice.<locals>.<lambda>"
+                    && v["arguments"]["values"]
+                        .as_array()
+                        .is_some_and(|v| v.len() > 1)
+                    && v["source"].as_str().unwrap_or("").contains("box.current()")
+            })
+            .map(|(k, v)| (k.clone(), v["arguments"].clone()))
+            .ok_or("No combobox handler")?;
+        let selected = args["values"][1].as_str().ok_or("Missing choice")?;
+        self.ui
+            .tk
+            .call(&[args["box"].as_str().unwrap(), "current", "1"])?;
+        self.ui.tk.call(&[&callback])?;
+        self.drain()?;
+        if self.ui.tk.call(&["set", args["var"].as_str().unwrap()])? != selected {
+            return Err("Combobox did not update its setting".into());
+        }
+        Ok(
+            serde_json::json!({"help_expand_collapse":true,"control_hover":true,"combobox_setting":true}),
+        )
     }
     pub fn run(&mut self) -> Result<()> {
         while self.ui.tk.has_windows() {

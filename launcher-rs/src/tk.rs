@@ -26,7 +26,6 @@ struct Api {
     delete: unsafe extern "C" fn(*mut Interp),
     init: unsafe extern "C" fn(*mut Interp) -> c_int,
     tk_init: unsafe extern "C" fn(*mut Interp) -> c_int,
-    eval: unsafe extern "C" fn(*mut Interp, *const c_char, isize, c_int) -> c_int,
     eval_objv: unsafe extern "C" fn(*mut Interp, isize, *const *mut Obj, c_int) -> c_int,
     new_string: unsafe extern "C" fn(*const c_char, isize) -> *mut Obj,
     get_string: unsafe extern "C" fn(*mut Obj, *mut isize) -> *const c_char,
@@ -102,7 +101,6 @@ impl Api {
             delete: function!(tcl, "Tcl_DeleteInterp"),
             init: function!(tcl, "Tcl_Init"),
             tk_init: function!(tk, "Tk_Init"),
-            eval: function!(tcl, "Tcl_EvalEx"),
             eval_objv: function!(tcl, "Tcl_EvalObjv"),
             new_string: function!(tcl, "Tcl_NewStringObj"),
             get_string: function!(tcl, "Tcl_GetStringFromObj"),
@@ -275,17 +273,6 @@ impl Tk {
             Err(result)
         }
     }
-    /// Evaluate trusted embedded toolkit code; use call() for all external values.
-    pub fn script(&self, source: &str) -> Result<String> {
-        self.check(unsafe {
-            (self.api.eval)(
-                self.interpreter,
-                source.as_ptr().cast(),
-                source.len() as isize,
-                0,
-            )
-        })
-    }
     pub fn call<S: AsRef<str>>(&self, arguments: &[S]) -> Result<String> {
         unsafe {
             let objects: Vec<_> = arguments
@@ -335,13 +322,6 @@ impl Tk {
             return Err("Cannot register Rust command".into());
         }
         Ok(())
-    }
-    pub fn run(&self) {
-        unsafe {
-            while (self.api.main_windows)() > 0 {
-                (self.api.do_event)(0);
-            }
-        }
     }
     pub fn library_directory() -> PathBuf {
         std::env::var_os("BB_TK_LIB_DIR")

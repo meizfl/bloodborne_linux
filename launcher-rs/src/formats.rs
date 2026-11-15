@@ -126,6 +126,15 @@ impl Elf {
             .ok_or("Header end overflow")?;
         let mut end = header_end;
         for p in &segments {
+            if p.loadable() {
+                let memory_end = p
+                    .address
+                    .checked_add(p.memory_size)
+                    .ok_or("Memory segment address overflow")?;
+                if memory_end > LIMIT || p.file_size > p.memory_size {
+                    return Err("Invalid memory segment layout".into());
+                }
+            }
             end = end.max(
                 p.offset
                     .checked_add(p.file_size)
@@ -355,6 +364,22 @@ mod tests {
         assert!(span(&[0; 4], u64::MAX, 8).is_err());
         assert!(c_string(b"abc", 0).is_err());
         assert!(sfo(&[]).is_err());
+    }
+    #[test]
+    fn executable_memory_ranges_are_validated_before_patching() {
+        let mut data = vec![0; 120];
+        data[..7].copy_from_slice(b"\x7fELF\x02\x01\x01");
+        data[18..20].copy_from_slice(&62u16.to_le_bytes());
+        data[32..40].copy_from_slice(&64u64.to_le_bytes());
+        data[54..56].copy_from_slice(&56u16.to_le_bytes());
+        data[56..58].copy_from_slice(&1u16.to_le_bytes());
+        data[64..68].copy_from_slice(&1u32.to_le_bytes());
+        data[80..88].copy_from_slice(&(u64::MAX - 10).to_le_bytes());
+        data[104..112].copy_from_slice(&20u64.to_le_bytes());
+        assert!(Elf::parse(&data).unwrap_err().contains("address overflow"));
+        data[80..88].copy_from_slice(&0u64.to_le_bytes());
+        data[104..112].copy_from_slice(&(LIMIT + 1).to_le_bytes());
+        assert!(Elf::parse(&data).unwrap_err().contains("memory segment"));
     }
     #[test]
     fn truncated_elf_headers_are_rejected() {

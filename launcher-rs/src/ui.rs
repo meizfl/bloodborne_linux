@@ -69,6 +69,7 @@ impl Ui {
             match value {
                 Value::String(text) => {
                     *text = text
+                        .replace("@PLATFORM@", &crate::platform::label().to_uppercase())
                         .replace("@INSTALL@", &paths.install.to_string_lossy())
                         .replace("@DATA@", &paths.data.to_string_lossy())
                         .replace("@GAME@", &paths.game().to_string_lossy())

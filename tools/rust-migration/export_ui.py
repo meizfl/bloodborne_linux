@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+from ui_manifest import normalize
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'launcher'))
@@ -210,8 +211,9 @@ def main():
             'references': {key:value(obj) for key,obj in window.__dict__.items() if isinstance(obj,(tk.Misc,tk.Variable))},
             'app_defaults': value(app.APP_DEFAULTS), 'ini_defaults': app.INI_DEFAULTS,
         }
-        text = json.dumps(manifest, ensure_ascii=False, indent=2)
+        text = json.dumps(normalize(manifest), ensure_ascii=False, indent=2)
         text = text.replace(profile, '@DATA@').replace(str(ROOT), '@INSTALL@')
+        text = text.replace(app.host.platform_label().upper(), '@PLATFORM@')
         (output / 'ui.json').write_text(text)
         print(json.dumps({'widgets':len(widgets),'images':len(images),'callbacks':len(callbacks),'pages':len(window.pages)}))
         for job in real.splitlist(real.call('after', 'info')): root.after_cancel(job)
