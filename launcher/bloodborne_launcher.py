@@ -56,6 +56,8 @@ def smoke_test(app):
         app.CONFIG_FILE = Path(folder) / 'settings.json'
         app.CONFIG_FILE.write_text(json.dumps({'check_updates': False, 'setup_done': True}), encoding='utf-8')
         root = tk.Tk()
+        backend = root.tk.call('tk', 'windowingsystem')
+        print('Window system:', backend, flush=True)
         errors = []
         def failed(*args):
             errors.append(''.join(traceback.format_exception(*args)))
@@ -77,9 +79,15 @@ def smoke_test(app):
                 raise AssertionError('WM_DELETE_WINDOW did not close the idle launcher')
         window = app.Launcher(root, tk, ttk, filedialog, messagebox)
         try:
+            if backend == 'wayland':
+                assert not root.bind_all('<Button-4>'), 'Wayland wheel input would be counted twice'
+                assert not root.bind_all('<Button-5>'), 'Wayland wheel input would be counted twice'
             for name, _title in app.NAV_SIMPLE + app.NAV_EXPERT:
                 window.show(name)
                 root.update()
+                if backend == 'wayland':
+                    visible = [key for key, page in window.pages.items() if page.winfo_ismapped()]
+                    assert visible == [name], f'Overlapping Wayland pages: {visible}'
             root.update_idletasks()
         finally:
             window.pad_stop()

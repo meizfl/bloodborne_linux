@@ -1,0 +1,80 @@
+--- a/wayland/tkWaylandInit.c
++++ b/wayland/tkWaylandInit.c
+@@ -1398,12 +1398,40 @@
+     }
+     
+     TkWindow *childPtr = TkWaylandTkWindowFromDrawable(drawable);
++    if (!childPtr) return TCL_ERROR;
++    /* Descendants remain mapped in Tk when an ancestor is unmapped. */
++    for (TkWindow *ancestor = childPtr; ancestor; ancestor = ancestor->parentPtr) {
++        if ((ancestor->flags & TK_ALREADY_DEAD) || !Tk_IsMapped(ancestor)) {
++            return TCL_ERROR;
++        }
++        if (Tk_IsTopLevel(ancestor)) break;
++    }
+     TkWindow *winPtr = childPtr;
+     float x = 0, y = 0;
+     while (!Tk_IsTopLevel(winPtr)) {
+         x += winPtr->changes.x;
+ 	y += winPtr->changes.y;
+     	winPtr = winPtr->parentPtr;
++    }
++    /* Cull scrolled-out widgets before starting NanoVG or uploading a mask.
++     * Tk keeps descendants mapped when a canvas moves them off screen. */
++    float visibleLeft = x, visibleTop = y;
++    float visibleRight = x + Tk_Width(childPtr);
++    float visibleBottom = y + Tk_Height(childPtr);
++    float ancestorX = x, ancestorY = y;
++    for (TkWindow *ancestor = childPtr; !Tk_IsTopLevel(ancestor); ) {
++        ancestorX -= ancestor->changes.x;
++        ancestorY -= ancestor->changes.y;
++        ancestor = ancestor->parentPtr;
++        if (visibleLeft < ancestorX) visibleLeft = ancestorX;
++        if (visibleTop < ancestorY) visibleTop = ancestorY;
++        float right = ancestorX + Tk_Width(ancestor);
++        float bottom = ancestorY + Tk_Height(ancestor);
++        if (visibleRight > right) visibleRight = right;
++        if (visibleBottom > bottom) visibleBottom = bottom;
++        if (visibleRight <= visibleLeft || visibleBottom <= visibleTop) {
++            return TCL_ERROR;
++        }
+     }
+     DEBUG_LOG("BeginDraw: %s in toplevel %s with offset (%d, %d)",
+ 	    Tk_PathName(childPtr), Tk_PathName(winPtr), (int)x, (int)y);
+--- a/wayland/tkWaylandSubwindows.c
++++ b/wayland/tkWaylandSubwindows.c
+@@ -655,8 +655,9 @@
+      * If the window is a non-toplevel child, clip to the bounds of its
+      * logical Tk parent.
+      */
+-    if (!Tk_IsTopLevel(winPtr) && winPtr->parentPtr != NULL) {
+-        clipRect parentBounds = getBounds(winPtr->parentPtr, scale);
++    for (TkWindow *ancestor = winPtr; !Tk_IsTopLevel(ancestor)
++            && ancestor->parentPtr != NULL; ancestor = ancestor->parentPtr) {
++        clipRect parentBounds = getBounds(ancestor->parentPtr, scale);
+         intersectRectWithRect(&effectiveBounds, parentBounds);
+     }
+ 
+@@ -684,9 +685,9 @@
+     DEBUG_LOG("effectiveBounds for %s: %.0fx%.0f+%.0f+%.0f (fb %dx%d)",
+         Tk_PathName(winPtr), bounds.w, bounds.h, bounds.x, bounds.y, fbWidth, fbHeight);
+     if (bounds.w <= 0 || bounds.h <= 0) {
+-        DEBUG_LOG("COLLAPSED effectiveBounds for %s: %.0fx%.0f+%.0f+%.0f - using full bounds fallback",
+-            Tk_PathName(winPtr), effectiveBounds.w, effectiveBounds.h, effectiveBounds.x, effectiveBounds.y);
+-        bounds = getBounds(winPtr, scale);
++        /* An empty intersection means the widget is completely clipped.
++         * The bottom mask rectangle covers the entire framebuffer. */
++        bounds = (clipRect) { .x = 0, .y = 0, .w = 0, .h = 0 };
+     }
+     /* Add clipRects for children that overlap the window. */
+     for (TkWindow *childPtr = winPtr->childList;
+@@ -733,6 +734,9 @@
+             stack[sp++] = topPtr;
+             while (sp > 0) {
+                 TkWindow *cur = stack[--sp];
++                /* A mapped descendant of an unmapped page is not visible.
++                 * Do not use its bounds to punch holes in other widgets. */
++                if (!Tk_IsMapped(cur) || (cur->flags & TK_ALREADY_DEAD)) continue;
+                 TkWindow *ch;
+                 for (ch = cur->childList; ch != NULL; ch = ch->nextPtr) {
+                     if (sp < 256) stack[sp++] = ch;

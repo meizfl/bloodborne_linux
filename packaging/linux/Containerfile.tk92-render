@@ -1,0 +1,4 @@
+FROM localhost/bbport-tk92
+COPY packaging/linux/tk92-hidden-widgets.patch /tmp/tk92-hidden-widgets.patch
+RUN cd /tmp/tk92/tk-* && patch -p1 < /tmp/tk92-hidden-widgets.patch \
+    && cd unix && make -j8 && make install-binaries install-libraries install-headers

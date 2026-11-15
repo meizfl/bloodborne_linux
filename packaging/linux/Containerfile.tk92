@@ -1,0 +1,12 @@
+# Experimental native Wayland launcher toolchain; stable image stays separate.
+FROM localhost/bbport-debian11
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgles2-mesa-dev libsystemd-dev libharfbuzz-dev libcairo2-dev \
+    libpango1.0-dev libdbus-1-dev libffi-dev libbz2-dev libreadline-dev \
+    libsqlite3-dev liblzma-dev libncursesw5-dev weston \
+    && rm -rf /var/lib/apt/lists/*
+COPY packaging/linux/build-tk92-deps.sh /tmp/build-tk92-deps.sh
+RUN bash /tmp/build-tk92-deps.sh
+COPY packaging/linux/tk92-debian11-xkb.patch /tmp/tk92-debian11-xkb.patch
+COPY packaging/linux/build-tk92.sh /tmp/build-tk92.sh
+RUN bash /tmp/build-tk92.sh

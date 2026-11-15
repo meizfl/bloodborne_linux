@@ -55,6 +55,7 @@ def linux_tk_libraries():
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--onedir', action='store_true', help='legacy folder package instead of a single executable')
+    parser.add_argument('--native-wayland', action='store_true', help='experimental Linux Tk 9.2 Wayland bundle')
     parser.add_argument('--source-only', action='store_true', help='create a source zip; requires Python, Tk and Pillow')
     parser.add_argument('--dist-dir', type=Path, default=ROOT / 'dist/launcher')
     parser.add_argument('--check', action='store_true', help='check imports/Tcl/assets in the frozen executable')
@@ -88,6 +89,14 @@ def main(argv=None):
                    'PIL._tkinter_finder', 'PIL._imagingtk', 'run', 'linux_start', 'bbport_linux_runner'):
         command += ['--hidden-import', module]
     if host == 'linux':
+        if args.native_wayland:
+            import _tkinter
+            if tuple(map(int, _tkinter.TK_VERSION.split('.'))) < (9, 2):
+                parser.error('--native-wayland requires the experimental Tk 9.2 toolchain')
+            command += ['--runtime-hook', str(ROOT / 'packaging/linux/tk92_bootstrap.py'),
+                        '--add-data', '/usr/share/X11/locale' + os.pathsep + 'wayland-data/locale']
+            for plugin in Path('/opt/bb-deps/lib/libdecor/plugins-1').glob('*.so'):
+                command += ['--add-binary', str(plugin) + os.pathsep + 'wayland-data/libdecor']
         for library in linux_tk_libraries():
             command += ['--add-binary', library + os.pathsep + '.']
     if host == 'windows':

@@ -1,0 +1,41 @@
+--- a/generic/tkIntXlibDecls.h
++++ b/generic/tkIntXlibDecls.h
+@@ -472,7 +472,7 @@
+ EXTERN KeySym		XkbKeycodeToKeysym(Display *d, unsigned int k, int g,
+ 				int i);
+ /* 158 */
+-EXTERN Display *	XkbOpenDisplay(const char *name, int *ev_rtrn,
++EXTERN Display *	XkbOpenDisplay(char *name, int *ev_rtrn,
+ 				int *err_rtrn, int *major_rtrn,
+ 				int *minor_rtrn, int *reason);
+ 
+@@ -638,7 +638,7 @@
+     XFontSet (*xCreateFontSet) (Display *display, const char *base_font_name_list, char ***missing_charset_list, int *missing_charset_count, char **def_string); /* 155 */
+     void (*xFreeStringList) (char **list); /* 156 */
+     KeySym (*xkbKeycodeToKeysym) (Display *d, unsigned int k, int g, int i); /* 157 */
+-    Display * (*xkbOpenDisplay) (const char *name, int *ev_rtrn, int *err_rtrn, int *major_rtrn, int *minor_rtrn, int *reason); /* 158 */
++    Display * (*xkbOpenDisplay) (char *name, int *ev_rtrn, int *err_rtrn, int *major_rtrn, int *minor_rtrn, int *reason); /* 158 */
+ } TkIntXlibStubs;
+ 
+ extern const TkIntXlibStubs *tkIntXlibStubsPtr;
+--- a/generic/tkInt.decls
++++ b/generic/tkInt.decls
+@@ -1481,7 +1481,7 @@
+     KeySym XkbKeycodeToKeysym(Display *d, unsigned int k, int g, int i)
+ }
+ declare 158 {
+-    Display *XkbOpenDisplay(const char *name, int *ev_rtrn, int *err_rtrn,
++    Display *XkbOpenDisplay(char *name, int *ev_rtrn, int *err_rtrn,
+ 	    int *major_rtrn, int *minor_rtrn, int *reason)
+ }
+ --- a/wayland/tkWaylandXlib.c
++++ b/wayland/tkWaylandXlib.c
+@@ -1533,7 +1533,7 @@
+ 
+ Display*
+ XkbOpenDisplay(
+-    TCL_UNUSED(const char *), /* name */
++    TCL_UNUSED(char *), /* name */
+     TCL_UNUSED(int *),
+     TCL_UNUSED(int *),
+     TCL_UNUSED(int *),

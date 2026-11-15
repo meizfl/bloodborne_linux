@@ -17,6 +17,7 @@ so a packaged port needs no Python installation.
 import ctypes
 import gc
 import json
+import math
 import os
 from pathlib import Path, PureWindowsPath
 import queue
@@ -2181,7 +2182,13 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
         canvas.configure(yscrollcommand=bar.set, yscrollincrement=1)  # scrolled in pixels (wheel())
         bar.pack(side='right', fill='y', padx=(0, self.px(4)), pady=(0, self.px(8)))
         canvas.pack(side='left', fill='both', expand=True)
-        outer.scroll = lambda pixels: canvas.yview_scroll(pixels, 'units') if inner.winfo_height() > canvas.winfo_height() else None
+        def scroll(pixels):
+            if inner.winfo_height() <= canvas.winfo_height():
+                return False
+            before = canvas.yview()
+            canvas.yview_scroll(pixels, 'units')
+            return canvas.yview() != before
+        outer.scroll = scroll
         # A canvas maps the page in it only when it draws, and it draws when it is seen: asked to now,
         # the page is built under the cover (Launcher.cover), not after it goes.
         outer.redisplay = lambda: canvas.itemconfigure(window, state='normal')
@@ -2354,7 +2361,7 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
         self.search_ready()
         self.show_goal()
         self.root.bind_all('<MouseWheel>', self.wheel)
-        if not WINDOWS:
+        if self.root.tk.call('tk', 'windowingsystem') == 'x11':
             self.root.bind_all('<Button-4>', lambda e: self.linux_wheel(e, 120))
             self.root.bind_all('<Button-5>', lambda e: self.linux_wheel(e, -120))
         self.root.bind_class('TCombobox', '<MouseWheel>', self.combobox_wheel)
@@ -2581,9 +2588,54 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
         page = self.pages.get(self.current_page)
         if not hasattr(page, 'scroll') or isinstance(event.widget, self.tk.Text) or 'popdown' in str(event.widget):
             return
+        smooth = self.root.tk.call('tk', 'windowingsystem') == 'wayland'
+        if smooth and getattr(self, 'wheel_page', self.current_page) != self.current_page:
+            if getattr(self, 'wheel_pending', None):
+                self.root.after_cancel(self.wheel_pending)
+            self.wheel_pending, self.wheel_pixels = None, 0.0
+            self.wheel_velocity, self.wheel_fraction = 0.0, 0.0
         self.wheel_pixels = getattr(self, 'wheel_pixels', 0.0) - event.delta / 120 * self.px(64)
         if not getattr(self, 'wheel_pending', None):
-            self.wheel_pending = self.root.after_idle(self.flush_wheel)
+            if smooth:
+                self.wheel_page = self.current_page
+                self.wheel_last = time.monotonic()
+                self.wheel_pending = self.root.after(8, self.flush_smooth_wheel)
+            else:
+                self.wheel_pending = self.root.after_idle(self.flush_wheel)
+
+    def flush_smooth_wheel(self):
+        """Critically damped spring: wheel events change the target, not velocity."""
+        self.wheel_pending = None
+        if self.wheel_page != self.current_page:
+            self.wheel_pixels = 0.0
+            self.wheel_velocity, self.wheel_fraction = 0.0, 0.0
+            return
+        now = time.monotonic()
+        elapsed = min(0.05, max(0.001, now - self.wheel_last))
+        self.wheel_last = now
+        remaining = self.wheel_pixels
+        velocity = getattr(self, 'wheel_velocity', 0.0)
+        omega = 18.0
+        decay = math.exp(-omega * elapsed)
+        coefficient = velocity - omega * remaining
+        next_remaining = (remaining - coefficient * elapsed) * decay
+        self.wheel_velocity = (velocity - omega * coefficient * elapsed) * decay
+        fraction = getattr(self, 'wheel_fraction', 0.0) + remaining - next_remaining
+        self.wheel_pixels = next_remaining
+        active = abs(next_remaining) > 0.05 or abs(self.wheel_velocity) > 1.0
+        if not active:
+            fraction += next_remaining
+            self.wheel_pixels, self.wheel_velocity = 0.0, 0.0
+        pixels = int(fraction)
+        self.wheel_fraction = fraction - pixels
+        page = self.pages.get(self.current_page)
+        if hasattr(page, 'scroll'):
+            if pixels:
+                if page.scroll(pixels) is False:
+                    self.wheel_pixels, self.wheel_velocity, self.wheel_fraction = 0.0, 0.0, 0.0
+                    return
+            if active:
+                self.wheel_pending = self.root.after(8, self.flush_smooth_wheel)
 
     def flush_wheel(self):
         self.wheel_pending = None
@@ -2741,6 +2793,13 @@ class Launcher(bbport_setup.SetupMixin, bbport_help.HelpMixin, bbport_search.Sea
         # The pages lie on top of each other and the shown one is raised: unpacking one and packing
         # the next made Tk unmap and map every element of both, about 40 ms a change (16 ms now).
         page = self.pages[name]
+        if self.root.tk.call('tk', 'windowingsystem') == 'wayland':
+            # The experimental Wayland renderer cannot reliably occlude the
+            # cached page stack. Keep only the selected page mapped there.
+            for other in self.pages.values():
+                if other is not page and getattr(other, 'stacked', False):
+                    other.place_forget()
+                    other.stacked = False
         if not getattr(page, 'stacked', False):
             page.place(x=0, y=0, relwidth=1, relheight=1)
             page.stacked = True

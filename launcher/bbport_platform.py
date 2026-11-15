@@ -93,9 +93,12 @@ def open_path(path, reveal=False):
 def desktop_environment(environment=None):
     """External desktop apps must not inherit PyInstaller's private libraries."""
     env = dict(os.environ if environment is None else environment)
-    if env.get('BB_BUNDLED_FONTCONFIG') == env.get('FONTCONFIG_FILE'):
-        env.pop('FONTCONFIG_FILE', None)
-    env.pop('BB_BUNDLED_FONTCONFIG', None)
+    for variable, marker in (('FONTCONFIG_FILE', 'BB_BUNDLED_FONTCONFIG'),
+                             ('LIBDECOR_PLUGIN_DIR', 'BB_BUNDLED_LIBDECOR'),
+                             ('XLOCALEDIR', 'BB_BUNDLED_XLOCALE')):
+        if env.get(marker) and env.get(marker) == env.get(variable):
+            env.pop(variable, None)
+        env.pop(marker, None)
     if getattr(sys, 'frozen', False):
         original = env.get('LD_LIBRARY_PATH_ORIG')
         if original is None:

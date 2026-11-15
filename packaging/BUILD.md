@@ -111,3 +111,9 @@ of https://github.com/meizfl/bloodborne_linux. Clone with `--recursive` to obtai
 third-party submodules. The project is GPL-2.0-or-later; bundled dependencies retain
 their own licenses. Distribute the corresponding source, including the pinned
 submodules and `gpu/patches/fsr-vulkan`, with binary distributions. Game data is excluded.
+
+### Experimental native Wayland frontend
+
+For the opt-in Tk 9.2a0/Clang/Debian 11 toolchain, renderer patches, and
+`--native-wayland` single-file build, see [TK92-WAYLAND.md](linux/TK92-WAYLAND.md).
+The standard builds keep their existing toolkit.

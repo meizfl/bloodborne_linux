@@ -1,0 +1,4 @@
+FROM localhost/bbport-tk92
+COPY packaging/linux/build-python-tk92.sh /tmp/build-python-tk92.sh
+RUN bash /tmp/build-python-tk92.sh
+ENV PATH="/opt/python-tk92/bin:${PATH}" LD_LIBRARY_PATH=/opt/tk92/lib:/opt/bb-deps/lib

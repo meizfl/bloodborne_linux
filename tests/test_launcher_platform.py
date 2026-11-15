@@ -224,6 +224,13 @@ class NativeLibraryEnvironmentTests(unittest.TestCase):
         self.assertEqual(result['FONTCONFIG_FILE'], '/user/fonts.conf')
         self.assertNotIn('BB_BUNDLED_FONTCONFIG', result)
 
+    def test_external_apps_do_not_load_the_launchers_wayland_plugins(self):
+        env = {'LIBDECOR_PLUGIN_DIR': '/bundle/plugins', 'BB_BUNDLED_LIBDECOR': '/bundle/plugins',
+               'XLOCALEDIR': '/bundle/locale', 'BB_BUNDLED_XLOCALE': '/bundle/locale'}
+        self.assertEqual(host.desktop_environment(env), {})
+        env['LIBDECOR_PLUGIN_DIR'] = '/user/plugins'
+        self.assertEqual(host.desktop_environment(env), {'LIBDECOR_PLUGIN_DIR': '/user/plugins'})
+
     def test_frozen_native_process_does_not_inherit_python_cpp_libraries(self):
         env = {'LD_LIBRARY_PATH': '/python-bundle', 'LD_LIBRARY_PATH_ORIG': '/host-libraries', 'BB_ONLINE': '0'}
         with mock.patch.object(host.sys, 'frozen', True, create=True):
@@ -231,3 +238,56 @@ class NativeLibraryEnvironmentTests(unittest.TestCase):
         self.assertEqual(result['LD_LIBRARY_PATH'], '/install/game_runtime/libs:/host-libraries')
         self.assertEqual(result['BB_ONLINE'], '0')
         self.assertEqual(env['LD_LIBRARY_PATH'], '/python-bundle')
+
+
+class SmoothWaylandWheelTests(unittest.TestCase):
+    def window(self):
+        window = object.__new__(launcher.Launcher)
+        window.root = mock.Mock()
+        window.current_page = window.wheel_page = 'controls'
+        window.wheel_last, window.wheel_pixels = 0.0, 64.0
+        window.pages = {'controls': mock.Mock(), 'play': mock.Mock()}
+        return window
+
+    def test_wheel_motion_is_spread_over_frames_without_losing_distance(self):
+        window = self.window()
+        for frame in range(1, 100):
+            with mock.patch.object(launcher.time, 'monotonic', return_value=frame * .008):
+                window.flush_smooth_wheel()
+            if frame == 2:
+                window.wheel_pixels += 64  # another event during the animation
+        steps = [call.args[0] for call in window.pages['controls'].scroll.call_args_list]
+        self.assertGreater(len(steps), 3)
+        self.assertTrue(all(0 < step < 64 for step in steps))
+        self.assertAlmostEqual(sum(steps) + window.wheel_pixels + window.wheel_fraction, 128)
+        self.assertLess(window.wheel_pixels, 1)
+
+    def test_new_notch_preserves_velocity_and_starts_without_a_jump(self):
+        window = self.window()
+        with mock.patch.object(launcher.time, 'monotonic', return_value=.008):
+            window.flush_smooth_wheel()
+        self.assertLess(window.wheel_fraction, 1)
+        window.pages['controls'].scroll.assert_not_called()
+        velocity = window.wheel_velocity
+        window.wheel_pixels += 64
+        self.assertEqual(window.wheel_velocity, velocity)
+        with mock.patch.object(launcher.time, 'monotonic', return_value=.016):
+            window.flush_smooth_wheel()
+        self.assertGreater(window.wheel_velocity, velocity)
+
+    def test_switching_pages_cancels_pending_motion(self):
+        window = self.window()
+        window.current_page = 'play'
+        window.flush_smooth_wheel()
+        window.pages['play'].scroll.assert_not_called()
+        self.assertEqual(window.wheel_pixels, 0)
+        self.assertIsNone(window.wheel_pending)
+
+    def test_reaching_an_edge_discards_remaining_inertia(self):
+        window = self.window()
+        window.pages['controls'].scroll.return_value = False
+        with mock.patch.object(launcher.time, 'monotonic', return_value=.04):
+            window.flush_smooth_wheel()
+        self.assertEqual(window.wheel_pixels, 0)
+        self.assertEqual(window.wheel_velocity, 0)
+        self.assertIsNone(window.wheel_pending)
