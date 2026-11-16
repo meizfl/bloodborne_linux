@@ -1,0 +1,86 @@
+name: Publish Python release 16112026
+on:
+  push:
+    branches: ['codex/python-release-16112026']
+    paths: ['.github/workflows/publish-python-release.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish-ready-builds:
+    if: github.repository == 'meizfl/bloodborne_linux'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: launcher-Windows
+          run-id: '43762749210'
+          github-token: ${{ github.token }}
+          path: artifacts/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: bloodborne-linux-glibc231
+          run-id: '43762749210'
+          github-token: ${{ github.token }}
+          path: artifacts/linux
+      - name: Verify and package the existing builds
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, os, stat, zipfile
+          output = Path('release')
+          windows = Path('artifacts/windows/BloodborneLauncher-windows.zip')
+          with zipfile.ZipFile(windows) as z:
+              assert z.testzip() is None
+              assert 'Bloodborne.exe' in z.namelist()
+          (output/'Bloodborne-Python-Windows-x86_64-16112026.zip').write_bytes(windows.read_bytes())
+          linux = Path('artifacts/linux')
+          assert (linux/'BloodborneLauncher').is_file()
+          assert (linux/'game_runtime/bb-probe').is_file()
+          for name in ('BloodborneLauncher', 'game_runtime/bb-probe', 'game_runtime/bb-gpu-capabilities'):
+              path = linux/name
+              if path.exists():
+                  path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+          archive = output/'Bloodborne-Python-Linux-x86_64-X11-glibc231-16112026.zip'
+          with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+              for path in sorted(linux.rglob('*')):
+                  if path.is_file():
+                      z.write(path, path.relative_to(linux).as_posix())
+              z.writestr('README.txt', 'Python launcher: Debian 11/Podman, X11/Tk 8.6.\nKeep BloodborneLauncher beside game_runtime/.\nChoose your own game folder. Game data is not included.\nSaves/settings: $HOME/.local/share/Bloodborne.\nIf the extractor loses permissions: chmod +x BloodborneLauncher game_runtime/bb-probe game_runtime/bb-gpu-capabilities\n')
+          with zipfile.ZipFile(archive) as z:
+              assert z.testzip() is None
+          hashes = []
+          for path in sorted(output.glob('*.zip')):
+              with path.open('rb') as stream:
+                  digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+              hashes.append(f'{digest}  {path.name}\n')
+          (output/'SHA256SUMS-CI.txt').write_text(''.join(hashes))
+          PY
+      - name: Create the dated draft and attach verified binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > release-notes.md <<'NOTES'
+          ## Python-версия лаунчера — 16.11.2026
+
+          Исходники: `codex/linux-shared-launcher`, коммит `4ebdb74f2340b40bb0910322094fd1f27f52bd00`.
+          Windows и Linux/X11 взяты из успешной [CI-сборки #19](https://github.com/meizfl/bloodborne_linux/actions/runs/43762749210).
+
+          - **Linux X11**: Debian 11 / Podman, Clang/LLD, glibc 2.31; лаунчер и `game_runtime/` с зависимостями в `libs/`.
+          - **Linux Wayland**: Debian 11 / Podman, Clang/LLD, Python 3.14 и исправленный Tk 9.2a0; нативный Wayland, плавная прокрутка и исправления перерисовки. Лаунчер и `game_runtime/` с `libs/`. Проверены все страницы, закрытие окна и 200 ELF-файлов; максимальное требование glibc 2.30. Tk 9.2 — экспериментальная ветка.
+          - **Windows**: готовый лаунчер `Bloodborne.exe` из GitHub CI (Windows 2022 / Python 3.12, bootloader Clang). Windows-рантайм поставляется отдельно.
+
+          Внешний Python и `.py`/`.sh`-обёртки для запуска не нужны. Данные игры в архивы не включены.
+          Сохранения и настройки: `$HOME/.local/share/Bloodborne` на Linux, `%LOCALAPPDATA%\Bloodborne` на Windows.
+          Для проверки архивов приложены файлы `SHA256SUMS-*.txt`.
+          NOTES
+          gh release create 16112026 --draft --target 4ebdb74f2340b40bb0910322094fd1f27f52bd00 --title 'Bloodborne Python — 16.11.2026' --notes-file release-notes.md
+          gh release upload 16112026 release/*.zip release/SHA256SUMS-CI.txt
